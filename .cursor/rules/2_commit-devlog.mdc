@@ -1,0 +1,56 @@
+---
+description: Commit isteğinde DEVLOG.md güncelleme ve değişiklik dökümantasyonu
+alwaysApply: true
+---
+
+# Commit + Geliştirme Günlüğü
+
+Kullanıcı "commit", "commitle", "commit at" vb. dediğinde git işlemine **ek olarak** `DEVLOG.md` dosyasını güncelle.
+
+## Commit öncesi yapılacaklar
+
+1. `git status`, `git diff`, `git log` ile değişiklikleri analiz et.
+2. `DEVLOG.md` dosyasını oku; mevcut aşama ve özet bölümünü kontrol et.
+
+## DEVLOG.md güncelleme kuralları
+
+### Üst özet (`## Mevcut Durum`)
+Her commit'te güncelle:
+- Aşama numarası ve adı
+- Son çalışan özellik
+- Sonraki hedef
+- Sistem haritası (yeni script/sınıf eklendiyse)
+- Klasör yapısı değiştiyse
+
+### Aşama haritası tablosu
+İlgili aşamanın durumunu güncelle: ⏳ → 🔄 → ✅
+
+### Yeni kayıt ekle (`## Commit Kayıtları` en üste)
+Her kayıt şu başlıkları içersin:
+
+```
+### [YYYY-MM-DD] <commit mesajının kısa özeti>
+
+**Aşama:** ...
+**Ne yapıldı:** (madde madde, kullanıcıya yönelik)
+**Değişen / eklenen dosyalar:** (yol listesi)
+**Unity editöründe yapılanlar:** (Inspector bağlantıları, sahne değişiklikleri)
+**Test kriteri:** (ne görmeli = başarı)
+**AI bağlam notları:** (gelecek oturumlar için: bağımlılıklar, bilinen kısıtlar, sıradaki mantıklı adım)
+```
+
+## AI bağlam notları — ne yazılmalı
+
+- Hangi sistemler birbirine bağlı (referans zinciri)
+- Henüz yapılmamış ama planlanan şeyler
+- Bilinen teknik borç veya geçici çözümler
+- Kullanıcının Unity deneyim seviyesine göre dikkat edilecekler
+
+## Sıra
+
+1. Değişiklikleri analiz et
+2. `DEVLOG.md` güncelle
+3. `DEVLOG.md`'yi commit'e dahil et
+4. Git commit oluştur
+
+Commit mesajı kısa ve "neden" odaklı olsun; detay `DEVLOG.md`'de kalır.
