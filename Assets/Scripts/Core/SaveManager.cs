@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 // Oyun verisini PlayerPrefs + JSON ile kaydeder ve yukler.
@@ -36,7 +37,8 @@ public class SaveManager : MonoBehaviour
         {
             gold = economyManager.CurrentGold,
             lastItemIndex = forgeButtonHandler.GetLastItemIndex(),
-            anvilLevel = anvilManager != null ? anvilManager.AnvilLevel : 1
+            anvilLevel = anvilManager != null ? anvilManager.AnvilLevel : 1,
+            lastQuitTimestamp = GetUnixTimeNow()
         };
 
         string json = JsonUtility.ToJson(data);
@@ -60,5 +62,10 @@ public class SaveManager : MonoBehaviour
 
         if (goldDisplayUI != null)
             goldDisplayUI.RefreshDisplay();
+    }
+
+    private static double GetUnixTimeNow()
+    {
+        return DateTimeOffset.UtcNow.ToUnixTimeSeconds();
     }
 }
