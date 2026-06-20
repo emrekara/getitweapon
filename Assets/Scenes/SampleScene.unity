@@ -1065,6 +1065,7 @@ MonoBehaviour:
   baseForgeDuration: 0.5
   durationReductionPerLevel: 0.25
   baseUpgradeCost: 25
+  upgradeSettings: {fileID: 11400000, guid: e2f3a4b5c6d7488899001122aabbccdd, type: 2}
   baseOfflineGoldPerSecond: 1
   goldPerSecondPerLevel: 0.5
   sellPriceMultiplierPerLevel: 0.5
@@ -1817,6 +1818,7 @@ MonoBehaviour:
   anvilManager: {fileID: 1023885880}
   offlineMessageText: {fileID: 592933838}
   maxOfflineSeconds: 28800
+  offlineMessageDurationSeconds: 3.5
 --- !u!4 &1503510893
 Transform:
   m_ObjectHideFlags: 0

@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 7c — Era item'ları (4 çağ, 12 item) ✅ |
-| **Son çalışan özellik** | Modern/Space forge havuzu + çağ bazlı placeholder ikonlar |
+| **Aşama** | 8 — Anvil upgrade timer + level config ✅ |
+| **Son çalışan özellik** | Parametric upgrade timer (level aralığı × çarpan), offline tamamlama, anında/timer mod |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Anvil upgrade timer |
-| **Henüz yok** | Anvil timer, envanter |
+| **Sonraki hedef** | Envanter veya satılmamış item koruması |
+| **Henüz yok** | Envanter, REST remote config, tech tree |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -41,16 +41,24 @@ ItemDatabase (ScriptableObject)
   └── Create: Assets → Create → GetItWeapon → Item Database
 
 AnvilManager (sahne objesi)
+  ├── upgradeSettings → MainAnvilUpgradeSettings (SO)
+  ├── TryStartUpgrade / TryCompleteUpgradeIfReady, LoadState
+  ├── GetUpgradeDurationSeconds() → config level aralığı + çarpan
+  ├── IsUpgradeInProgress, UpgradeEndsAtUtc (save)
   ├── GetForgeDuration(), GetUpgradeCost(), GetOfflineGoldPerSecond(), GetScaledSellPrice()
-  ├── OnAnvilLevelChanged event
+  ├── OnAnvilLevelChanged, OnUpgradeTimerChanged
   └── sellPriceMultiplierPerLevel, era gold çarpanları
 
-SellButtonHandler → anvilManager.GetScaledSellPrice()
+AnvilUpgradeSettings (ScriptableObject)
+  ├── useUpgradeTimer (kapalı = tüm upgrade anında)
+  ├── baseUpgradeDurationSeconds, levelRanges[] (min/max, durationMultiplier)
+  └── Create: Assets → Create → GetItWeapon → Anvil Upgrade Settings
 
 AnvilUpgradeHandler (UpgradeButton üzerinde)
+  ├── Upgrade geri sayım UI, offline/load sonrası tamamlama
   └── OnUpgradeClicked, yetersiz gold → "Need XXg"
 
-SaveManager → GameSaveData: gold, lastItemIndex, anvilLevel, lastQuitTimestamp
+SaveManager → GameSaveData: gold, lastItemIndex, anvilLevel, anvilUpgradeEndsAt, lastQuitTimestamp
 
 OfflineProgressManager (sahne objesi)
   ├── anvilManager.GetOfflineGoldPerSecond(), maxOfflineSeconds (28800 = 8 saat)
@@ -73,7 +81,7 @@ Assets/Art/Icons/
 Assets/Scripts/
 ├── Core/ (GameSaveData, SaveManager)
 ├── Economy/EconomyManager.cs
-├── Forge/ (ForgeButtonHandler, SellButtonHandler, ItemData, ItemDatabase, AnvilManager)
+├── Forge/ (ForgeButtonHandler, SellButtonHandler, ItemData, ItemDatabase, AnvilManager, AnvilUpgradeSettings)
 ├── Idle/OfflineProgressManager.cs
 └── UI/ (GoldDisplayUI, AnvilUpgradeHandler)
 
@@ -116,12 +124,49 @@ EventSystem
 | 7a | Forge UX + offline mesaj kaybolma | ✅ | forge'da item gizle, 3.5s mesaj |
 | 7b | Satış fiyatı anvil çarpanı | ✅ | GetScaledSellPrice + UI event |
 | 7c | Era item'ları | ✅ | 4 çağ, 12 item + çağ ikonları |
+| 8 | Anvil upgrade timer | ✅ | Config SO, level aralığı, save/load, offline |
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-21] Anvil upgrade timer ve level bazlı config
+
+**Aşama:** 8 — Anvil upgrade timer
+
+**Ne yapıldı:**
+- Anvil upgrade artık anında değil; config'e göre timer veya anında tamamlanır.
+- `AnvilUpgradeSettings` SO: `useUpgradeTimer`, baz süre, level aralığı + `durationMultiplier`.
+- Varsayılan: timer kapalı (anında); açıkken Lv.1–4 anında, Lv.5+ çarpanlı süre.
+- `GameSaveData.anvilUpgradeEndsAt` — offline upgrade tamamlama.
+- `AnvilUpgradeHandler` geri sayım UI + load sonrası otomatik complete.
+- `MainAnvilUpgradeSettings` asset + sahne bağlantısı.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Forge/AnvilManager.cs`, `AnvilUpgradeSettings.cs`
+- `Assets/Scripts/UI/AnvilUpgradeHandler.cs`
+- `Assets/Scripts/Core/GameSaveData.cs`, `SaveManager.cs`
+- `Assets/ScriptableObjects/AnvilUpgrade/MainAnvilUpgradeSettings.asset`
+- `Assets/Scenes/SampleScene.unity`
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- AnvilManager → Upgrade Settings: MainAnvilUpgradeSettings.
+- Timer test: SO'da Use Upgrade Timer işaretle.
+
+**Test kriteri:**
+- Timer kapalı → UPGRADE anında Lv+1.
+- Timer açık, Lv.1 → anında; Lv.5+ → geri sayım, offline bitince tamamlanır.
+- Kayıt JSON'da `anvilUpgradeEndsAt` görünür (timer aktifken).
+
+**AI bağlam notları:**
+- Süreler SO'dan; ileride REST/remote config bu SO'yu runtime doldurabilir (spec §8.5).
+- Tech tree çarpan override ayrı katman olacak.
+- Sıradaki: envanter veya forge öncesi sat zorunluluğu.
+
+---
 
 ### [2026-06-21] Modern/Space era item'ları ve çağ bazlı ikonlar
 

@@ -38,6 +38,7 @@ public class SaveManager : MonoBehaviour
             gold = economyManager.CurrentGold,
             lastItemIndex = forgeButtonHandler.GetLastItemIndex(),
             anvilLevel = anvilManager != null ? anvilManager.AnvilLevel : 1,
+            anvilUpgradeEndsAt = anvilManager != null ? anvilManager.UpgradeEndsAtUtc : 0,
             lastQuitTimestamp = GetUnixTimeNow()
         };
 
@@ -58,7 +59,7 @@ public class SaveManager : MonoBehaviour
         forgeButtonHandler.RestoreLastItem(data.lastItemIndex);
 
         if (anvilManager != null)
-            anvilManager.SetAnvilLevel(data.anvilLevel);
+            anvilManager.LoadState(data.anvilLevel, data.anvilUpgradeEndsAt);
 
         if (goldDisplayUI != null)
             goldDisplayUI.RefreshDisplay();
