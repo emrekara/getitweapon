@@ -11,6 +11,8 @@ public class SellButtonHandler : MonoBehaviour
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnSellClicked()
     {
+        if (forgeButtonHandler.IsForging) return;
+
         ItemData item = forgeButtonHandler.LastForgedItem;
         if (item == null) return;
 

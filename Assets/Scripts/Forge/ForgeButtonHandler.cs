@@ -10,7 +10,7 @@ public class ForgeButtonHandler : MonoBehaviour
     [SerializeField] private TextMeshProUGUI forgeTimerText;
     [SerializeField] private Image itemIcon;
     [SerializeField] private Button forgeButton;
-    [SerializeField] private ItemData[] forgeableItems;
+    [SerializeField] private ItemDatabase itemDatabase;
     [SerializeField] private SaveManager saveManager;
     [SerializeField] private AnvilManager anvilManager;
 
@@ -19,6 +19,9 @@ public class ForgeButtonHandler : MonoBehaviour
 
     /// <summary>Son forge edilen item; sat butonu bunu kullanir.</summary>
     public ItemData LastForgedItem => lastForgedItem;
+
+    /// <summary>Forge devam ediyor mu; satis bu surede engellenir.</summary>
+    public bool IsForging => isForging;
 
     /// <summary>Satistan sonra son item kaydini ve ekrani temizler.</summary>
     public void ClearLastItem()
@@ -30,34 +33,27 @@ public class ForgeButtonHandler : MonoBehaviour
     /// <summary>Kayit icin son item'in listedeki indeksini dondurur (-1 = yok).</summary>
     public int GetLastItemIndex()
     {
-        if (lastForgedItem == null || forgeableItems == null) return -1;
-
-        for (int i = 0; i < forgeableItems.Length; i++)
-        {
-            if (forgeableItems[i] == lastForgedItem)
-                return i;
-        }
-
-        return -1;
+        if (lastForgedItem == null || itemDatabase == null) return -1;
+        return itemDatabase.IndexOf(lastForgedItem);
     }
 
     /// <summary>Kayittan son forge edilen item'i geri yukler.</summary>
     public void RestoreLastItem(int index)
     {
-        if (forgeableItems == null || index < 0 || index >= forgeableItems.Length)
+        if (itemDatabase == null || index < 0 || index >= itemDatabase.Count)
         {
             ClearLastItem();
             return;
         }
 
-        lastForgedItem = forgeableItems[index];
+        lastForgedItem = itemDatabase.GetItem(index);
         RefreshLastItemDisplay();
     }
 
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnForgeClicked()
     {
-        if (isForging || forgeableItems == null || forgeableItems.Length == 0) return;
+        if (isForging || itemDatabase == null || itemDatabase.Count == 0) return;
 
         StartCoroutine(ForgeRoutine());
     }
@@ -68,6 +64,8 @@ public class ForgeButtonHandler : MonoBehaviour
 
         if (forgeButton != null)
             forgeButton.interactable = false;
+
+        HideItemDisplay();
 
         float duration = anvilManager != null ? anvilManager.GetForgeDuration() : 3f;
         float remaining = duration;
@@ -90,8 +88,8 @@ public class ForgeButtonHandler : MonoBehaviour
         if (forgeTimerText != null)
             forgeTimerText.text = string.Empty;
 
-        int randomIndex = Random.Range(0, forgeableItems.Length);
-        lastForgedItem = forgeableItems[randomIndex];
+        int randomIndex = Random.Range(0, itemDatabase.Count);
+        lastForgedItem = itemDatabase.GetItem(randomIndex);
 
         RefreshLastItemDisplay();
         saveManager?.SaveGame();
@@ -117,6 +115,18 @@ public class ForgeButtonHandler : MonoBehaviour
             Sprite icon = lastForgedItem.Icon;
             itemIcon.sprite = icon;
             itemIcon.enabled = icon != null;
+        }
+    }
+
+    private void HideItemDisplay()
+    {
+        if (lastItemText != null)
+            lastItemText.text = string.Empty;
+
+        if (itemIcon != null)
+        {
+            itemIcon.sprite = null;
+            itemIcon.enabled = false;
         }
     }
 

@@ -14,6 +14,9 @@ public class OfflineProgressManager : MonoBehaviour
     [SerializeField] private AnvilManager anvilManager;
     [SerializeField] private TextMeshProUGUI offlineMessageText;
     [SerializeField] private double maxOfflineSeconds = 28800; // 8 saat
+    [SerializeField] private float offlineMessageDurationSeconds = 3.5f;
+
+    private Coroutine hideMessageCoroutine;
 
     private void Start()
     {
@@ -52,13 +55,31 @@ public class OfflineProgressManager : MonoBehaviour
         string message = $"Welcome back! +{earnedGold:0} gold ({timeLabel} offline)";
 
         if (offlineMessageText != null)
+        {
             offlineMessageText.text = message;
+
+            if (hideMessageCoroutine != null)
+                StopCoroutine(hideMessageCoroutine);
+
+            hideMessageCoroutine = StartCoroutine(HideOfflineMessageAfterDelay());
+        }
 
         // Ayni offline surenin tekrar odememesi icin hemen kaydet
         if (saveManager != null)
             saveManager.SaveGame();
 
         Debug.Log($"[Offline] {message}");
+    }
+
+    /// <summary>Offline mesajini birkac saniye sonra ekrandan kaldirir.</summary>
+    private IEnumerator HideOfflineMessageAfterDelay()
+    {
+        yield return new WaitForSeconds(offlineMessageDurationSeconds);
+
+        if (offlineMessageText != null)
+            offlineMessageText.text = string.Empty;
+
+        hideMessageCoroutine = null;
     }
 
     /// <summary>Offline sureyi okunabilir metne cevirir.</summary>

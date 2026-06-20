@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 6b — Offline gold/s anvil ölçekleme ✅ |
-| **Son çalışan özellik** | Offline gold/s anvil seviyesi + çağ çarpanı ile ölçeklenir |
+| **Aşama** | 7a — Forge UX + ItemDatabase ✅ |
+| **Son çalışan özellik** | ItemDatabase, StoneBow, forge sırasında item gizleme, offline mesaj kaybolma |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | ItemDatabase, forge UX (forge başlayınca eski item gizle), anvil timer |
-| **Henüz yok** | Envanter, forge UX iyileştirmeleri, anvil timer |
+| **Sonraki hedef** | Satış fiyatı anvil çarpanı (7b), era item'ları (7c), anvil timer |
+| **Henüz yok** | Era filtreli forge, anvil timer, envanter |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -30,16 +30,17 @@ ItemData (ScriptableObject)
   └── Create: Assets → Create → GetItWeapon → Item Data
 
 ForgeButtonHandler (ForgeButton üzerinde)
-  ├── anvilManager.GetForgeDuration(), forgeTimerText
+  ├── itemDatabase, anvilManager.GetForgeDuration(), forgeTimerText
+  ├── Forge başlayınca HideItemDisplay(), IsForging
   └── Coroutine ile forge + SaveGame
+
+ItemDatabase (ScriptableObject)
+  ├── MainItemDatabase: StoneSword_T1, StoneAxe_T1, StoneBow_T1
+  └── Create: Assets → Create → GetItWeapon → Item Database
 
 AnvilManager (sahne objesi)
   ├── GetForgeDuration(), GetUpgradeCost(), TryUpgrade(), GetOfflineGoldPerSecond(), CurrentEra
   └── baseForgeDuration, baseUpgradeCost, baseOfflineGoldPerSecond, goldPerSecondPerLevel
-
-ItemDatabase (ScriptableObject) — 🔄 devam ediyor
-  ├── Merkezi forge item listesi
-  └── Create: Assets → Create → GetItWeapon → Item Database
 
 AnvilUpgradeHandler (UpgradeButton üzerinde)
   └── OnUpgradeClicked, yetersiz gold → "Need XXg"
@@ -48,6 +49,7 @@ SaveManager → GameSaveData: gold, lastItemIndex, anvilLevel, lastQuitTimestamp
 
 OfflineProgressManager (sahne objesi)
   ├── anvilManager.GetOfflineGoldPerSecond(), maxOfflineSeconds (28800 = 8 saat)
+  ├── offlineMessageDurationSeconds (3.5) sonra mesaj kaybolur
   ├── Load sonrası offline gold + OfflineMessageText
   └── SaveGame() ile çift ödeme engeli
 
@@ -60,7 +62,7 @@ Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug menüsü
 Assets/Scripts/
 ├── Core/ (GameSaveData, SaveManager)
 ├── Economy/EconomyManager.cs
-├── Forge/ (ForgeButtonHandler, SellButtonHandler, ItemData, AnvilManager)
+├── Forge/ (ForgeButtonHandler, SellButtonHandler, ItemData, ItemDatabase, AnvilManager)
 ├── Idle/OfflineProgressManager.cs
 └── UI/ (GoldDisplayUI, AnvilUpgradeHandler)
 
@@ -93,19 +95,58 @@ EventSystem
 | 0 | Proje kurulumu, spec, Cursor kuralları | ✅ | `forge-master-spec.md`, `.cursor/rules/` |
 | 1 | Temel forge döngüsü (gold + buton + UI) | ✅ | Forge → item → sell → gold |
 | 2 | Item ikonu | ✅ | Placeholder PNG + UI Image |
-| 2b | ItemDatabase | 🔄 | Devam ediyor |
+| 2b | ItemDatabase | ✅ | MainItemDatabase, 3 stone item |
+| 2c | StoneBow + icon_bow | ✅ | 3. item forge havuzunda |
 | 3 | Forge timer (üretim süresi) | ✅ | AnvilManager'dan süre |
 | 4 | Anvil yükseltme / çağ | ✅ | Upgrade UI + save |
 | 5 | Save / load (JSON + PlayerPrefs) | ✅ | gold + lastItemIndex + anvilLevel + lastQuitTimestamp |
 | 6 | Offline / idle kazanç | ✅ | 8 saat cap, welcome UI |
 | 6b | Offline gold/s anvil ölçekleme | ✅ | seviye + çağ çarpanı |
-| 7+ | Era, PvP, clan vb. | ⏳ | Spec'e göre ileride |
+| 7a | Forge UX + offline mesaj kaybolma | ✅ | forge'da item gizle, 3.5s mesaj |
+| 7b | Satış fiyatı anvil çarpanı | 🔄 | Sırada |
+| 7c | Era item'ları | ⏳ | Spec uyumlu ileride |
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-20] ItemDatabase, StoneBow, forge UX ve offline mesaj kaybolma
+
+**Aşama:** 7a — ItemDatabase + forge UX
+
+**Ne yapıldı:**
+- `ItemDatabase` ScriptableObject + `MainItemDatabase` (kılıç, balta, yay).
+- `ForgeButtonHandler` item listesini `ItemDatabase` üzerinden okur.
+- `StoneBow_T1` item + `icon_bow.png` placeholder ikon.
+- Forge başlayınca eski item/ikon gizlenir; `IsForging` ile satış engellenir.
+- Offline welcome mesajı 3.5 sn sonra otomatik kaybolur.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Forge/ItemDatabase.cs` (yeni)
+- `Assets/ScriptableObjects/ItemDatabase/MainItemDatabase.asset` (yeni)
+- `Assets/ScriptableObjects/Items/StoneBow_T1.asset` (yeni)
+- `Assets/Art/Icons/icon_bow.png` (yeni)
+- `Assets/Scripts/Forge/ForgeButtonHandler.cs`, `SellButtonHandler.cs`
+- `Assets/Scripts/Idle/OfflineProgressManager.cs`
+- `Assets/Scenes/SampleScene.unity`
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- ForgeButton → Item Database: MainItemDatabase.
+- OfflineProgressManager → Offline Message Duration Seconds: 3.5.
+
+**Test kriteri:**
+- Forge 3 item'dan rastgele üretir (kılıç/balta/yay).
+- Forge sırasında ikon/isim kaybolur, SELL çalışmaz.
+- Offline mesaj birkaç saniye sonra silinir.
+
+**AI bağlam notları:**
+- Satış fiyatı hâlâ ItemData sabit değeri; sıradaki: anvil çarpanı (7b), sonra era item'ları (7c).
+- `Assets/NewItem.asset` yanlışlıkla oluşturulmuş test dosyası — commit'e dahil edilmedi.
+
+---
 
 ### [2026-06-20] Offline gold/s anvil seviye ve çağ ölçeklemesi
 

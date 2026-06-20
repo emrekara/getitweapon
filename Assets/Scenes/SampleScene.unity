@@ -2117,9 +2117,7 @@ MonoBehaviour:
   forgeTimerText: {fileID: 1537226656}
   itemIcon: {fileID: 2107031702}
   forgeButton: {fileID: 1890474973}
-  forgeableItems:
-  - {fileID: 11400000, guid: 55d23372debe0c2428fc52bd4cb3407a, type: 2}
-  - {fileID: 11400000, guid: 1624d63970db1dc40a937207fa0e2157, type: 2}
+  itemDatabase: {fileID: 11400000, guid: 3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f80, type: 2}
   saveManager: {fileID: 2135704100}
   anvilManager: {fileID: 1023885880}
 --- !u!1 &1917021794
