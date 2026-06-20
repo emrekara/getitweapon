@@ -132,6 +132,25 @@ EventSystem
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
 
+### [2026-06-21] TextMesh Pro font asset Unity 6 uyumu
+
+**Aşama:** 8 — Bakım (asset senkron)
+
+**Ne yapıldı:**
+- `LiberationSans SDF.asset` Unity 6 material/font serializedVersion güncellemesi (editör otomatik).
+
+**Değişen / eklenen dosyalar:**
+- `Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset`
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:** Yok (otomatik asset refresh).
+
+**Test kriteri:** UI metinleri (Gold, Forge timer vb.) normal render edilir.
+
+**AI bağlam notları:** Oyun mantığı değişmedi; yalnızca TMP import uyumu.
+
+---
+
 ### [2026-06-21] Anvil upgrade timer ve level bazlı config
 
 **Aşama:** 8 — Anvil upgrade timer
