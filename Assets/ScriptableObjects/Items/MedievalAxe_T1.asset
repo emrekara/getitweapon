@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: MedievalAxe_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Medieval Axe
-  icon: {fileID: 405150306347663216, guid: fa00e6d772eee7a4fb20ebb6af9cfa61, type: 3}
+  icon: {fileID: 1000010002, guid: aabb0011ccddeeff1122334455667799, type: 3}
   baseAttack: 12
   baseDefense: 0
   sellPrice: 22

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: MedievalSword_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Medieval Sword
-  icon: {fileID: -2124102372771563869, guid: f26fa54a455756f4c9c16773e1c27fb4, type: 3}
+  icon: {fileID: -1000010001, guid: aabb0011ccddeeff1122334455667788, type: 3}
   baseAttack: 8
   baseDefense: 0
   sellPrice: 15

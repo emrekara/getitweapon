@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 255b08e988f3816419712b98c79e9ba5, type: 3}
-  m_Name: MedievalBow_T1
+  m_Name: ModernBow_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemName: Medieval Bow
-  icon: {fileID: 1000010003, guid: aabb0011ccddeeff11223344556677aa, type: 3}
-  baseAttack: 10
+  itemName: Modern Bow
+  icon: {fileID: 1000020003, guid: bbcc0022ddeeff0011223344556677aa, type: 3}
+  baseAttack: 18
   baseDefense: 0
-  sellPrice: 18
-  tier: 2
-  era: Medieval
+  sellPrice: 54
+  tier: 3
+  era: Modern

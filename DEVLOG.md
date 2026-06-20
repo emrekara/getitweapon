@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 7c — Era item'ları (Stone + Medieval) ✅ |
-| **Son çalışan özellik** | Çağ bazlı forge havuzu, anvil satış çarpanı, upgrade'de sell UI yenileme |
+| **Aşama** | 7c — Era item'ları (4 çağ, 12 item) ✅ |
+| **Son çalışan özellik** | Modern/Space forge havuzu + çağ bazlı placeholder ikonlar |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Modern + Space item'ları (Lv.10/15), anvil timer |
-| **Henüz yok** | Modern/Space SO'lar, anvil timer, envanter |
+| **Sonraki hedef** | Anvil upgrade timer |
+| **Henüz yok** | Anvil timer, envanter |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -36,7 +36,7 @@ ForgeButtonHandler (ForgeButton üzerinde)
   └── Coroutine ile forge + SaveGame
 
 ItemDatabase (ScriptableObject)
-  ├── MainItemDatabase: 3 Stone + 3 Medieval item
+  ├── MainItemDatabase: 12 item (Stone/Medieval/Modern/Space × sword/axe/bow)
   ├── GetItemsForEra(), GetRandomItemForEra()
   └── Create: Assets → Create → GetItWeapon → Item Database
 
@@ -59,6 +59,12 @@ OfflineProgressManager (sahne objesi)
   └── SaveGame() ile çift ödeme engeli
 
 Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug (gold, kayıt, missing script tarama)
+
+Assets/Art/Icons/
+  ├── icon_sword/axe/bow.png → Stone era
+  ├── icon_medieval_*.png → Medieval era
+  ├── icon_modern_*.png → Modern era
+  └── icon_space_*.png → Space era
 ```
 
 ### Klasör Yapısı (Scripts)
@@ -109,13 +115,49 @@ EventSystem
 | 6b | Offline gold/s anvil ölçekleme | ✅ | seviye + çağ çarpanı |
 | 7a | Forge UX + offline mesaj kaybolma | ✅ | forge'da item gizle, 3.5s mesaj |
 | 7b | Satış fiyatı anvil çarpanı | ✅ | GetScaledSellPrice + UI event |
-| 7c | Era item'ları | 🔄 | Stone + Medieval; Modern/Space sırada |
+| 7c | Era item'ları | ✅ | 4 çağ, 12 item + çağ ikonları |
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-21] Modern/Space era item'ları ve çağ bazlı ikonlar
+
+**Aşama:** 7c — Era item'ları tamamlandı
+
+**Ne yapıldı:**
+- Modern Sword/Axe/Bow item SO'ları eklendi (tier 3, Lv.10–14 havuzu).
+- Space Sword/Axe/Bow item SO'ları eklendi (tier 4, Lv.15+ havuzu).
+- `MainItemDatabase` 12 item'a genişletildi.
+- Medieval/Modern/Space için 9 era placeholder ikonu (`Assets/Art/Icons/`).
+- Medieval item'lar era ikonlarına bağlandı; Stone genel ikonları kullanmaya devam ediyor.
+- `MedievalAxe_T1` GUID düzeltmesi (31→32 karakter; broken PPtr hatası giderildi).
+
+**Değişen / eklenen dosyalar:**
+- `Assets/ScriptableObjects/Items/Modern*_T1.asset` (3 yeni)
+- `Assets/ScriptableObjects/Items/Space*_T1.asset` (3 yeni)
+- `Assets/ScriptableObjects/Items/Medieval*_T1.asset` (ikon + MedievalAxe GUID)
+- `Assets/ScriptableObjects/ItemDatabase/MainItemDatabase.asset`
+- `Assets/Art/Icons/icon_medieval_*.png`, `icon_modern_*.png`, `icon_space_*.png` (9+9 meta)
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- Ekstra Inspector adımı gerekmez; `MainItemDatabase` ve item SO'lar hazır.
+- Project → `Assets/Art/Icons` altında 12 PNG görünmeli (Refresh gerekirse).
+
+**Test kriteri:**
+- Lv.1–4 → Stone item + taş ikon; Lv.5–9 → Medieval + altın tonlu ikon.
+- Lv.10–14 → Modern item; Lv.15+ → Space item + mor/cyan ikon.
+- Debug missing script taraması temiz; `MainItemDatabase` 12 slot dolu.
+
+**AI bağlam notları:**
+- Kod değişmedi; `AnvilManager.GetEraForLevel()` zaten 4 çağı destekliyordu.
+- İkonlar placeholder; gerçek art aynı dosya adlarıyla değiştirilebilir.
+- Sıradaki mantıklı adım: anvil upgrade timer (spec §3.2).
+
+---
 
 ### [2026-06-20] Anvil satış çarpanı ve era bazlı forge havuzu
 
