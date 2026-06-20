@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 7a — Forge UX + ItemDatabase ✅ |
-| **Son çalışan özellik** | ItemDatabase, StoneBow, forge sırasında item gizleme, offline mesaj kaybolma |
+| **Aşama** | 7c — Era item'ları (Stone + Medieval) ✅ |
+| **Son çalışan özellik** | Çağ bazlı forge havuzu, anvil satış çarpanı, upgrade'de sell UI yenileme |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Satış fiyatı anvil çarpanı (7b), era item'ları (7c), anvil timer |
-| **Henüz yok** | Era filtreli forge, anvil timer, envanter |
+| **Sonraki hedef** | Modern + Space item'ları (Lv.10/15), anvil timer |
+| **Henüz yok** | Modern/Space SO'lar, anvil timer, envanter |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -26,21 +26,26 @@ GoldDisplayUI (GoldText üzerinde)
   └── RefreshDisplay() → "Gold: X"
 
 ItemData (ScriptableObject)
-  ├── itemName, icon, baseAttack, sellPrice, tier
+  ├── itemName, icon, baseAttack, sellPrice, tier, era
   └── Create: Assets → Create → GetItWeapon → Item Data
 
 ForgeButtonHandler (ForgeButton üzerinde)
-  ├── itemDatabase, anvilManager.GetForgeDuration(), forgeTimerText
+  ├── itemDatabase.GetRandomItemForEra(CurrentEra), anvilManager
   ├── Forge başlayınca HideItemDisplay(), IsForging
+  ├── OnAnvilLevelChanged → RefreshLastItemDisplay (sell fiyat UI)
   └── Coroutine ile forge + SaveGame
 
 ItemDatabase (ScriptableObject)
-  ├── MainItemDatabase: StoneSword_T1, StoneAxe_T1, StoneBow_T1
+  ├── MainItemDatabase: 3 Stone + 3 Medieval item
+  ├── GetItemsForEra(), GetRandomItemForEra()
   └── Create: Assets → Create → GetItWeapon → Item Database
 
 AnvilManager (sahne objesi)
-  ├── GetForgeDuration(), GetUpgradeCost(), TryUpgrade(), GetOfflineGoldPerSecond(), CurrentEra
-  └── baseForgeDuration, baseUpgradeCost, baseOfflineGoldPerSecond, goldPerSecondPerLevel
+  ├── GetForgeDuration(), GetUpgradeCost(), GetOfflineGoldPerSecond(), GetScaledSellPrice()
+  ├── OnAnvilLevelChanged event
+  └── sellPriceMultiplierPerLevel, era gold çarpanları
+
+SellButtonHandler → anvilManager.GetScaledSellPrice()
 
 AnvilUpgradeHandler (UpgradeButton üzerinde)
   └── OnUpgradeClicked, yetersiz gold → "Need XXg"
@@ -53,7 +58,7 @@ OfflineProgressManager (sahne objesi)
   ├── Load sonrası offline gold + OfflineMessageText
   └── SaveGame() ile çift ödeme engeli
 
-Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug menüsü
+Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug (gold, kayıt, missing script tarama)
 ```
 
 ### Klasör Yapısı (Scripts)
@@ -103,14 +108,49 @@ EventSystem
 | 6 | Offline / idle kazanç | ✅ | 8 saat cap, welcome UI |
 | 6b | Offline gold/s anvil ölçekleme | ✅ | seviye + çağ çarpanı |
 | 7a | Forge UX + offline mesaj kaybolma | ✅ | forge'da item gizle, 3.5s mesaj |
-| 7b | Satış fiyatı anvil çarpanı | 🔄 | Sırada |
-| 7c | Era item'ları | ⏳ | Spec uyumlu ileride |
+| 7b | Satış fiyatı anvil çarpanı | ✅ | GetScaledSellPrice + UI event |
+| 7c | Era item'ları | 🔄 | Stone + Medieval; Modern/Space sırada |
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-20] Anvil satış çarpanı ve era bazlı forge havuzu
+
+**Aşama:** 7b + 7c (Stone/Medieval)
+
+**Ne yapıldı:**
+- `AnvilManager.GetScaledSellPrice()`: satış fiyatı anvil seviye + çağ çarpanı.
+- `OnAnvilLevelChanged` event: upgrade sonrası item satış fiyatı UI anında güncellenir.
+- `ItemData.era` alanı; `ItemDatabase.GetRandomItemForEra()`.
+- Forge yalnızca `AnvilManager.CurrentEra` havuzundan item üretir.
+- Medieval Sword/Axe/Bow item SO'ları eklendi (tier 2, daha yüksek baz fiyat).
+- Medieval asset GUID düzeltmesi (31→32 karakter; missing script uyarısı giderildi).
+- `DebugSaveMenu`: missing script tarama (sahne + asset).
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Forge/AnvilManager.cs`, `ForgeButtonHandler.cs`, `SellButtonHandler.cs`
+- `Assets/Scripts/Forge/ItemData.cs`, `ItemDatabase.cs`
+- `Assets/ScriptableObjects/Items/Medieval*_T1.asset` (3 yeni)
+- `Assets/ScriptableObjects/ItemDatabase/MainItemDatabase.asset`
+- `Assets/ScriptableObjects/Items/Stone*_T1.asset` (era alanı)
+- `Assets/Editor/DebugSaveMenu.cs`
+- `Assets/Scenes/SampleScene.unity`
+- `DEVLOG.md`
+
+**Test kriteri:**
+- Lv.1–4 → Stone item; Lv.5+ → Medieval item.
+- Upgrade → Sell: Xg anında artar; SELL doğru gold verir.
+- Debug missing script taraması temiz.
+
+**AI bağlam notları:**
+- Global anvil çarpanı geçici; asıl fark era item baz fiyatından gelir.
+- Sıradaki: Modern (Lv.10) + Space (Lv.15) item SO'ları.
+- Anvil timer henüz yok.
+
+---
 
 ### [2026-06-20] ItemDatabase, StoneBow, forge UX ve offline mesaj kaybolma
 

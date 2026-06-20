@@ -18,3 +18,4 @@ MonoBehaviour:
   baseDefense: 0
   sellPrice: 6
   tier: 1
+  era: Stone

@@ -1,11 +1,117 @@
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 // Gelistirme sirasinda PlayerPrefs kaydini duzenlemek icin Editor menusu.
 public static class DebugSaveMenu
 {
     private const string SaveKey = "GetItWeapon_Save";
+
+    [MenuItem("GetItWeapon/Debug/Missing Script Bul (Sahne)")]
+    private static void FindMissingScriptsInScene()
+    {
+        int count = 0;
+
+        foreach (GameObject root in SceneManager.GetActiveScene().GetRootGameObjects())
+        {
+            foreach (Transform transform in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(transform.gameObject) <= 0)
+                    continue;
+
+                count += GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(transform.gameObject);
+                Debug.LogWarning($"[Debug] Missing script: {GetHierarchyPath(transform)}", transform.gameObject);
+            }
+        }
+
+        if (count == 0)
+            Debug.Log("[Debug] Sahnedeki hicbir objede missing script yok.");
+        else
+            Debug.LogWarning($"[Debug] Toplam {count} missing script bulundu. Console'daki satira tikla, objeyi sec.");
+    }
+
+    [MenuItem("GetItWeapon/Debug/Missing Script Bul (Project Assetleri)")]
+    private static void FindMissingScriptsInAssets()
+    {
+        int count = 0;
+        string[] assetGuids = AssetDatabase.FindAssets("t:ScriptableObject t:Prefab", new[] { "Assets" });
+
+        foreach (string guid in assetGuids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (path.EndsWith(".unity"))
+                continue;
+
+            Object mainAsset = AssetDatabase.LoadMainAssetAtPath(path);
+            if (mainAsset == null)
+            {
+                count++;
+                Debug.LogWarning($"[Debug] Asset yuklenemedi: {path}");
+                continue;
+            }
+
+            SerializedObject serializedObject = new SerializedObject(mainAsset);
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            if (scriptProperty == null) continue;
+
+            if (scriptProperty.objectReferenceValue == null &&
+                scriptProperty.objectReferenceInstanceIDValue != 0)
+            {
+                count++;
+                Debug.LogWarning($"[Debug] Missing script: {path}", mainAsset);
+            }
+        }
+
+        if (count == 0)
+            Debug.Log("[Debug] Project assetlerinde missing script yok.");
+        else
+            Debug.LogWarning($"[Debug] Toplam {count} missing script asset bulundu.");
+    }
+
+    [MenuItem("GetItWeapon/Debug/Missing Script Temizle (Sahne)")]
+    private static void RemoveMissingScriptsInScene()
+    {
+        int removed = 0;
+
+        foreach (GameObject root in SceneManager.GetActiveScene().GetRootGameObjects())
+        {
+            foreach (Transform transform in root.GetComponentsInChildren<Transform>(true))
+            {
+                int missingCount = GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(transform.gameObject);
+                if (missingCount <= 0) continue;
+
+                Undo.RegisterCompleteObjectUndo(transform.gameObject, "Remove Missing Scripts");
+                GameObjectUtility.RemoveMonoBehavioursWithMissingScript(transform.gameObject);
+                removed += missingCount;
+                Debug.Log($"[Debug] Missing script silindi: {GetHierarchyPath(transform)}", transform.gameObject);
+            }
+        }
+
+        if (removed == 0)
+        {
+            Debug.Log("[Debug] Temizlenecek missing script yok.");
+            return;
+        }
+
+        EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+        Debug.Log($"[Debug] {removed} missing script kaldirildi. Sahneyi kaydet (Ctrl+S).");
+    }
+
+    private static string GetHierarchyPath(Transform transform)
+    {
+        string path = transform.name;
+        Transform current = transform.parent;
+
+        while (current != null)
+        {
+            path = current.name + "/" + path;
+            current = current.parent;
+        }
+
+        return path;
+    }
 
     [MenuItem("GetItWeapon/Debug/Kaydi Sil (Reset Save)")]
     private static void DeleteSave()

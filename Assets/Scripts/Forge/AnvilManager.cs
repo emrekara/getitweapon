@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 // Anvil (ors) seviyesi; forge suresi ve cag bilgisini yonetir.
@@ -9,12 +10,16 @@ public class AnvilManager : MonoBehaviour
     [SerializeField] private double baseUpgradeCost = 25;
     [SerializeField] private double baseOfflineGoldPerSecond = 1;
     [SerializeField] private double goldPerSecondPerLevel = 0.5;
+    [SerializeField] private double sellPriceMultiplierPerLevel = 0.5;
 
     /// <summary>Mevcut anvil seviyesi.</summary>
     public int AnvilLevel => anvilLevel;
 
     /// <summary>Seviyeye gore cag adi.</summary>
     public string CurrentEra => GetEraForLevel(anvilLevel);
+
+    /// <summary>Anvil seviyesi degistiginde tetiklenir (UI yenileme icin).</summary>
+    public event Action OnAnvilLevelChanged;
 
     /// <summary>Anvil seviyesine gore forge suresi (saniye).</summary>
     public float GetForgeDuration()
@@ -38,13 +43,23 @@ public class AnvilManager : MonoBehaviour
         if (!economyManager.TrySpendGold(cost)) return false;
 
         anvilLevel++;
+        NotifyAnvilLevelChanged();
         return true;
     }
 
     /// <summary>Kayit yuklerken anvil seviyesini ayarlar.</summary>
     public void SetAnvilLevel(int level)
     {
-        anvilLevel = Mathf.Max(1, level);
+        int clampedLevel = Mathf.Max(1, level);
+        if (anvilLevel == clampedLevel) return;
+
+        anvilLevel = clampedLevel;
+        NotifyAnvilLevelChanged();
+    }
+
+    private void NotifyAnvilLevelChanged()
+    {
+        OnAnvilLevelChanged?.Invoke();
     }
 
     /// <summary>Anvil seviyesi ve caga gore offline gold/s oranini dondurur.</summary>
@@ -52,6 +67,19 @@ public class AnvilManager : MonoBehaviour
     {
         double levelBonus = baseOfflineGoldPerSecond + (anvilLevel - 1) * goldPerSecondPerLevel;
         return levelBonus * GetEraGoldMultiplier(anvilLevel);
+    }
+
+    /// <summary>Item baz satis fiyatina uygulanan anvil carpani.</summary>
+    public double GetSellPriceMultiplier()
+    {
+        double levelBonus = 1 + (anvilLevel - 1) * sellPriceMultiplierPerLevel;
+        return levelBonus * GetEraGoldMultiplier(anvilLevel);
+    }
+
+    /// <summary>Anvil seviyesine gore olceklenmis satis fiyatini dondurur.</summary>
+    public double GetScaledSellPrice(double baseSellPrice)
+    {
+        return baseSellPrice * GetSellPriceMultiplier();
     }
 
     private static string GetEraForLevel(int level)

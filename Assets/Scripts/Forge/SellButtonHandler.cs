@@ -7,6 +7,7 @@ public class SellButtonHandler : MonoBehaviour
     [SerializeField] private EconomyManager economyManager;
     [SerializeField] private GoldDisplayUI goldDisplayUI;
     [SerializeField] private SaveManager saveManager;
+    [SerializeField] private AnvilManager anvilManager;
 
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnSellClicked()
@@ -16,7 +17,11 @@ public class SellButtonHandler : MonoBehaviour
         ItemData item = forgeButtonHandler.LastForgedItem;
         if (item == null) return;
 
-        economyManager.AddGold(item.SellPrice);
+        double sellGold = anvilManager != null
+            ? anvilManager.GetScaledSellPrice(item.SellPrice)
+            : item.SellPrice;
+
+        economyManager.AddGold(sellGold);
         goldDisplayUI.RefreshDisplay();
 
         forgeButtonHandler.ClearLastItem();

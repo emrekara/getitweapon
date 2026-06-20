@@ -10,6 +10,7 @@ public class ItemData : ScriptableObject
     [SerializeField] private double baseDefense = 0;
     [SerializeField] private double sellPrice = 5;
     [SerializeField] private int tier = 1;
+    [SerializeField] private string era = "Stone";
 
     public string ItemName => itemName;
     public Sprite Icon => icon;
@@ -17,4 +18,6 @@ public class ItemData : ScriptableObject
     public double BaseDefense => baseDefense;
     public double SellPrice => sellPrice;
     public int Tier => tier;
+    /// <summary>Item cagi: Stone, Medieval, Modern, Space.</summary>
+    public string Era => era;
 }

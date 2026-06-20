@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 255b08e988f3816419712b98c79e9ba5, type: 3}
-  m_Name: StoneSword_T1
+  m_Name: MedievalAxe_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemName: Stone Sword
-  icon: {fileID: -2124102372771563869, guid: f26fa54a455756f4c9c16773e1c27fb4, type: 3}
-  baseAttack: 3
+  itemName: Medieval Axe
+  icon: {fileID: 405150306347663216, guid: fa00e6d772eee7a4fb20ebb6af9cfa61, type: 3}
+  baseAttack: 12
   baseDefense: 0
-  sellPrice: 5
-  tier: 1
-  era: Stone
+  sellPrice: 22
+  tier: 2
+  era: Medieval

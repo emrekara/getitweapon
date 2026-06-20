@@ -53,9 +53,28 @@ public class ForgeButtonHandler : MonoBehaviour
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnForgeClicked()
     {
-        if (isForging || itemDatabase == null || itemDatabase.Count == 0) return;
+        if (isForging || itemDatabase == null) return;
+        if (itemDatabase.GetItemsForEra(GetCurrentEra()).Length == 0) return;
 
         StartCoroutine(ForgeRoutine());
+    }
+
+    private void OnEnable()
+    {
+        if (anvilManager != null)
+            anvilManager.OnAnvilLevelChanged += HandleAnvilLevelChanged;
+    }
+
+    private void OnDisable()
+    {
+        if (anvilManager != null)
+            anvilManager.OnAnvilLevelChanged -= HandleAnvilLevelChanged;
+    }
+
+    private void HandleAnvilLevelChanged()
+    {
+        if (isForging) return;
+        RefreshLastItemDisplay();
     }
 
     private IEnumerator ForgeRoutine()
@@ -88,8 +107,14 @@ public class ForgeButtonHandler : MonoBehaviour
         if (forgeTimerText != null)
             forgeTimerText.text = string.Empty;
 
-        int randomIndex = Random.Range(0, itemDatabase.Count);
-        lastForgedItem = itemDatabase.GetItem(randomIndex);
+        lastForgedItem = itemDatabase.GetRandomItemForEra(GetCurrentEra());
+        if (lastForgedItem == null)
+        {
+            isForging = false;
+            if (forgeButton != null)
+                forgeButton.interactable = true;
+            yield break;
+        }
 
         RefreshLastItemDisplay();
         saveManager?.SaveGame();
@@ -100,14 +125,19 @@ public class ForgeButtonHandler : MonoBehaviour
             forgeButton.interactable = true;
     }
 
-    private void RefreshLastItemDisplay()
+    /// <summary>Ekrandaki item metnini guncel anvil seviyesine gore yeniler.</summary>
+    public void RefreshLastItemDisplay()
     {
         if (lastForgedItem == null) return;
 
         if (lastItemText != null)
         {
+            double sellPrice = anvilManager != null
+                ? anvilManager.GetScaledSellPrice(lastForgedItem.SellPrice)
+                : lastForgedItem.SellPrice;
+
             lastItemText.text =
-                $"{lastForgedItem.ItemName} (ATK {lastForgedItem.BaseAttack:0}) - Sell: {lastForgedItem.SellPrice:0}g";
+                $"{lastForgedItem.ItemName} (ATK {lastForgedItem.BaseAttack:0}) - Sell: {sellPrice:0}g";
         }
 
         if (itemIcon != null)
@@ -128,6 +158,11 @@ public class ForgeButtonHandler : MonoBehaviour
             itemIcon.sprite = null;
             itemIcon.enabled = false;
         }
+    }
+
+    private string GetCurrentEra()
+    {
+        return anvilManager != null ? anvilManager.CurrentEra : "Stone";
     }
 
     private void ClearDisplay()

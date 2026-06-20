@@ -1067,6 +1067,7 @@ MonoBehaviour:
   baseUpgradeCost: 25
   baseOfflineGoldPerSecond: 1
   goldPerSecondPerLevel: 0.5
+  sellPriceMultiplierPerLevel: 0.5
 --- !u!1 &1055814347
 GameObject:
   m_ObjectHideFlags: 0
@@ -1491,6 +1492,7 @@ MonoBehaviour:
   economyManager: {fileID: 133250569}
   goldDisplayUI: {fileID: 1329190417}
   saveManager: {fileID: 2135704100}
+  anvilManager: {fileID: 1023885880}
 --- !u!1 &1329190413
 GameObject:
   m_ObjectHideFlags: 0

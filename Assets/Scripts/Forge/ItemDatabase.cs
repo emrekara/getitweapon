@@ -32,4 +32,38 @@ public class ItemDatabase : ScriptableObject
 
         return -1;
     }
+
+    /// <summary>Belirtilen caga ait forge item'larini dondurur.</summary>
+    public ItemData[] GetItemsForEra(string era)
+    {
+        if (items == null || string.IsNullOrEmpty(era)) return System.Array.Empty<ItemData>();
+
+        int matchCount = 0;
+        for (int i = 0; i < items.Length; i++)
+        {
+            if (items[i] != null && items[i].Era == era)
+                matchCount++;
+        }
+
+        if (matchCount == 0) return System.Array.Empty<ItemData>();
+
+        ItemData[] result = new ItemData[matchCount];
+        int writeIndex = 0;
+
+        for (int i = 0; i < items.Length; i++)
+        {
+            if (items[i] != null && items[i].Era == era)
+                result[writeIndex++] = items[i];
+        }
+
+        return result;
+    }
+
+    /// <summary>Caga uygun rastgele item secer; havuz bos ise null.</summary>
+    public ItemData GetRandomItemForEra(string era)
+    {
+        ItemData[] pool = GetItemsForEra(era);
+        if (pool.Length == 0) return null;
+        return pool[Random.Range(0, pool.Length)];
+    }
 }
