@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 6 — Offline kazanç ✅ |
-| **Son çalışan özellik** | Offline gold (lastQuitTimestamp, 8 saat cap, welcome UI, anında kayıt) |
+| **Aşama** | 6b — Offline gold/s anvil ölçekleme ✅ |
+| **Son çalışan özellik** | Offline gold/s anvil seviyesi + çağ çarpanı ile ölçeklenir |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | gold/s anvil bağlantısı, ItemDatabase, forge UX iyileştirmeleri |
-| **Henüz yok** | Envanter, ItemDatabase, tier/era ölçekleme, anvil timer |
+| **Sonraki hedef** | ItemDatabase, forge UX (forge başlayınca eski item gizle), anvil timer |
+| **Henüz yok** | Envanter, forge UX iyileştirmeleri, anvil timer |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -34,8 +34,12 @@ ForgeButtonHandler (ForgeButton üzerinde)
   └── Coroutine ile forge + SaveGame
 
 AnvilManager (sahne objesi)
-  ├── GetForgeDuration(), GetUpgradeCost(), TryUpgrade(), CurrentEra
-  └── baseForgeDuration, baseUpgradeCost Inspector'dan
+  ├── GetForgeDuration(), GetUpgradeCost(), TryUpgrade(), GetOfflineGoldPerSecond(), CurrentEra
+  └── baseForgeDuration, baseUpgradeCost, baseOfflineGoldPerSecond, goldPerSecondPerLevel
+
+ItemDatabase (ScriptableObject) — 🔄 devam ediyor
+  ├── Merkezi forge item listesi
+  └── Create: Assets → Create → GetItWeapon → Item Database
 
 AnvilUpgradeHandler (UpgradeButton üzerinde)
   └── OnUpgradeClicked, yetersiz gold → "Need XXg"
@@ -43,7 +47,7 @@ AnvilUpgradeHandler (UpgradeButton üzerinde)
 SaveManager → GameSaveData: gold, lastItemIndex, anvilLevel, lastQuitTimestamp
 
 OfflineProgressManager (sahne objesi)
-  ├── goldPerSecond (1), maxOfflineSeconds (28800 = 8 saat)
+  ├── anvilManager.GetOfflineGoldPerSecond(), maxOfflineSeconds (28800 = 8 saat)
   ├── Load sonrası offline gold + OfflineMessageText
   └── SaveGame() ile çift ödeme engeli
 
@@ -89,11 +93,12 @@ EventSystem
 | 0 | Proje kurulumu, spec, Cursor kuralları | ✅ | `forge-master-spec.md`, `.cursor/rules/` |
 | 1 | Temel forge döngüsü (gold + buton + UI) | ✅ | Forge → item → sell → gold |
 | 2 | Item ikonu | ✅ | Placeholder PNG + UI Image |
-| 2b | ItemDatabase | ⏳ | İleride |
+| 2b | ItemDatabase | 🔄 | Devam ediyor |
 | 3 | Forge timer (üretim süresi) | ✅ | AnvilManager'dan süre |
 | 4 | Anvil yükseltme / çağ | ✅ | Upgrade UI + save |
 | 5 | Save / load (JSON + PlayerPrefs) | ✅ | gold + lastItemIndex + anvilLevel + lastQuitTimestamp |
-| 6 | Offline / idle kazanç | ✅ | 1 gold/s, 8 saat cap, welcome UI |
+| 6 | Offline / idle kazanç | ✅ | 8 saat cap, welcome UI |
+| 6b | Offline gold/s anvil ölçekleme | ✅ | seviye + çağ çarpanı |
 | 7+ | Era, PvP, clan vb. | ⏳ | Spec'e göre ileride |
 
 ---
@@ -101,6 +106,37 @@ EventSystem
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-20] Offline gold/s anvil seviye ve çağ ölçeklemesi
+
+**Aşama:** 6b — Offline gold/s anvil bağlantısı
+
+**Ne yapıldı:**
+- `AnvilManager.GetOfflineGoldPerSecond()`: seviye bonusu + çağ çarpanı (Stone→Space).
+- Inspector alanları: `baseOfflineGoldPerSecond` (1), `goldPerSecondPerLevel` (0.5).
+- `OfflineProgressManager` sabit gold/s kaldırıldı; `AnvilManager` referansı ile hesaplar.
+- Sahne referansları bağlandı.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Forge/AnvilManager.cs`
+- `Assets/Scripts/Idle/OfflineProgressManager.cs`
+- `Assets/Scenes/SampleScene.unity`
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- OfflineProgressManager → Anvil Manager referansı.
+- AnvilManager → Base Offline Gold Per Second: 1, Gold Per Second Per Level: 0.5.
+
+**Test kriteri:**
+- Anvil yükseldikçe offline kazanç artar (ör. 16s offline, yüksek seviyede +1000 gold).
+- Seviye 1'de ~1 gold/s.
+
+**AI bağlam notları:**
+- Formül: `(base + (level-1)×0.5) × eraMultiplier`.
+- Era çarpanları: Stone 1×, Medieval 1.5×, Modern 2×, Space 2.5×.
+- Sıradaki: ItemDatabase, forge UX.
+
+---
 
 ### [2026-06-20] Offline idle kazanç sistemi
 

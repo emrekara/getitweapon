@@ -1065,6 +1065,8 @@ MonoBehaviour:
   baseForgeDuration: 0.5
   durationReductionPerLevel: 0.25
   baseUpgradeCost: 25
+  baseOfflineGoldPerSecond: 1
+  goldPerSecondPerLevel: 0.5
 --- !u!1 &1055814347
 GameObject:
   m_ObjectHideFlags: 0
@@ -1810,8 +1812,8 @@ MonoBehaviour:
   economyManager: {fileID: 133250569}
   goldDisplayUI: {fileID: 1329190417}
   saveManager: {fileID: 2135704100}
+  anvilManager: {fileID: 1023885880}
   offlineMessageText: {fileID: 592933838}
-  goldPerSecond: 1
   maxOfflineSeconds: 28800
 --- !u!4 &1503510893
 Transform:

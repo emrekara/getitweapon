@@ -11,8 +11,8 @@ public class OfflineProgressManager : MonoBehaviour
     [SerializeField] private EconomyManager economyManager;
     [SerializeField] private GoldDisplayUI goldDisplayUI;
     [SerializeField] private SaveManager saveManager;
+    [SerializeField] private AnvilManager anvilManager;
     [SerializeField] private TextMeshProUGUI offlineMessageText;
-    [SerializeField] private double goldPerSecond = 1;
     [SerializeField] private double maxOfflineSeconds = 28800; // 8 saat
 
     private void Start()
@@ -39,6 +39,7 @@ public class OfflineProgressManager : MonoBehaviour
         if (elapsed <= 1) yield break;
 
         elapsed = Math.Min(elapsed, maxOfflineSeconds);
+        double goldPerSecond = anvilManager != null ? anvilManager.GetOfflineGoldPerSecond() : 1;
         double earnedGold = elapsed * goldPerSecond;
         if (earnedGold <= 0) yield break;
 
