@@ -1,0 +1,82 @@
+# Cursor Rules — Forge Master Klonu (Unity 6.3 LTS)
+
+## PROJE BAĞLAMI
+- Unity 6.3 LTS (6000.3.x), 2D mobil idle RPG geliştiriyorum.
+- Hedef: "Forge Master" benzeri bir oyun (demirci/forge teması, idle ilerleme, item üretme-satma, anvil yükseltme).
+- Dil: C#, Unity yeni API'ları (UnityEngine, UnityEngine.UI, TextMeshPro).
+- Platformlar: Android ve iOS (mobil dikey ekran).
+- BEN UNITY'DE TAMAMEN YENİYİM. Bunu her zaman varsay.
+
+## EN ÖNEMLİ KURAL: HER KODDAN SONRA "UNITY'DE NE YAPACAĞIM" TALİMATI
+Bana bir C# script'i yazdığında, kodun ardından MUTLAKA şu başlıkla bir bölüm ekle:
+
+### "🔧 UNITY EDİTÖRÜNDE YAPILACAKLAR"
+Bu bölümde adım adım, numaralı şekilde anlat:
+1. Bu script hangi GameObject'e eklenecek (yoksa nasıl oluşturulacak).
+2. Inspector'da hangi alanlar görünecek ve her birine ne sürüklenecek/yazılacak.
+3. UI elemanı gerekiyorsa (buton, text) Hierarchy'de tam yolu (örn: "Hierarchy > sağ tık > UI > Button - TextMeshPro").
+4. Buton OnClick bağlantısı gerekiyorsa, adım adım nasıl bağlanacağı.
+5. Test etmek için ne yapmam gerektiği (Play tuşuna bas, şuna tıkla, şunu görmelisin).
+
+Talimatları "şunu yapabilirsin" gibi belirsiz yazma. "Şunu yap: ..." gibi net, emir kipinde yaz.
+
+## UNITY 6.3 SÜRÜM UYUMU (KRİTİK)
+- Eski sürüm menüleri/API'ları KULLANMA. Unity 6.3'te neyin değiştiğinden emin değilsen, bunu açıkça belirt: "Bu adım sürüme göre değişebilir, menüyü bulamazsan söyle."
+- UI için ESKİ `Text` yerine HER ZAMAN `TextMeshPro` (TMP_Text / TextMeshProUGUI) kullan.
+- `GameObject.Find` ve `Camera.main` gibi yavaş/kırılgan çağrılardan kaçın; referansları `[SerializeField]` ile Inspector'dan al.
+- Input için yeni Input System DEĞİL, basit UI butonları kullan (yeni başlayan için daha kolay). Gerekirse bunu söyle.
+
+## KOD STİLİ
+- Her script'in başına 1-2 satır Türkçe yorum koy: bu script ne işe yarıyor.
+- Önemli satırların yanına kısa Türkçe yorum ekle, böylece kodu öğrenebileyim.
+- Değişken ve fonksiyon isimleri İngilizce ve anlamlı olsun (forgeButton, currentGold, OnForgeClicked).
+- `public` alanları gereksiz yere açma; Inspector'da görünmesi gerekenler için `[SerializeField] private` kullan.
+- Magic number kullanma; ayarlanabilir değerleri `[SerializeField]` alan yap ki Inspector'dan değiştirebileyim.
+- Para/sayı gibi ekonomi değerlerini `double` veya `BigInteger` ile tut (idle oyunlarda sayılar çok büyür); başlangıçta `double` yeterli, bunu açıkla.
+
+## MİMARİ İLKELERİ
+- Tek dev script yazma; her sistem ayrı dosya (ForgeManager, EconomyManager, ItemData vs.).
+- Ekonomi/ilerleme değerlerini koda gömme; ScriptableObject veya ayarlanabilir alan kullan.
+- Idle/offline kazanç hesabı için cihaz saatine güvenme mantığını baştan kur (ileride sunucuya bağlanınca bozulmasın); şimdilik DateTime kullan ama bunu yorum olarak işaretle.
+- Kaydetme/yükleme (save system) gerektiğinde önce basit JSON + PlayerPrefs anlat, karmaşık çözüm önerme.
+
+## ÖĞRETME MODU
+- Bir kod verdiğinde, ne yaptığını 2-3 cümleyle SADE Türkçe açıkla. Jargon kullanırsan parantez içinde anlamını yaz.
+- Bir Unity kavramı ilk kez geçiyorsa (Component, Prefab, Canvas, ScriptableObject) tek cümlede ne olduğunu söyle.
+- Bir şeyi neden o şekilde yaptığını kısaca belirt ("GameObject.Find yerine SerializeField kullandım çünkü daha hızlı ve hata yapma riski az").
+
+## ADIM ADIM İLERLEME — ONAY ZORUNLU
+- Her mesajda **yalnızca TEK bir adım** ver. Birden fazla adımı aynı mesajda listeleme.
+- Kullanıcı Unity'de tamamen yeni; buton yerleştirme gibi temel işlemleri de tek tek anlat.
+- Her adımda **tam konum** belirt: hangi pencere (Hierarchy, Inspector, Project, Game, Scene), hangi menü yolu, neye tıklanacak.
+- Adım sonunda kullanıcıdan **açık onay bekle**: "tamam", "hazırım", "devam" gibi bir yanıt gelmeden bir sonraki adıma geçme.
+- Kullanıcı takılırsa veya hata bildirirse, o adımı tekrarla veya düzelt; sonraki adıma atlama.
+- Kod yazmadan önce de onay al: kullanıcı editör adımlarını bitirmeden script oluşturma.
+- Her adımın sonunda **ne görmesi gerektiğini** yaz (başarı kriteri) ve **"Devam etmek için 'tamam' yaz"** de.
+
+## YAPMA
+- Bana aynı anda 5 farklı dosya verip "hepsini ekle" deme. Adım adım, küçük parçalar halinde ilerle.
+- Kullanıcıdan onay almadan bir sonraki adıma, dosyaya veya koda geçme.
+- Test edemeyeceğim büyük sistemleri tek seferde yazma.
+- Online/backend/PvP/clan kodu yazmaya kalkma (o aşamada değiliz); ben açıkça istemeden bunlara girme.
+- Reklam/IAP SDK entegrasyonu önerme; o aşamada değiliz.
+- Varsayım yapıp ilerleme: emin değilsen bana sor.
+
+## İLETİŞİM
+- Cevapların Türkçe olsun.
+- Uzun teorik anlatım yerine, çalışan kod + net Unity adımları ver.
+- Bir şeyi denememi istediğinde, sonucu nasıl anlayacağımı da söyle (ne görmeliyim, ne görürsem hata var).
+
+## PROJE KLASÖR YAPISI VE DOSYA YOLLARI (ÖNEMLİ)
+- Proje ana klasörü: "Get It Weapon". Cursor bu klasörde açık.
+- Yapı şöyle:
+  Get It Weapon\
+  ├── Assets\          ← TÜM script ve oyun dosyaları SADECE buraya
+  ├── Packages\        ← dokunma
+  ├── ProjectSettings\ ← dokunma
+  └── .cursorrules
+- C# script'leri HER ZAMAN "Assets/" altına yaz. Unity yalnızca Assets içindeki dosyaları tanır; dışına dosya yazma.
+- Script'leri düzenli tut: "Assets/Scripts/" altına koy. Alt klasör mantığı kullan (örn. Assets/Scripts/Forge/, Assets/Scripts/Economy/, Assets/Scripts/UI/).
+- Packages, ProjectSettings ve diğer Unity sistem klasörlerini DEĞİŞTİRME, silme, içine dosya yazma.
+- Yeni bir dosya oluştururken tam yolunu bana söyle (örn. "Assets/Scripts/Forge/ForgeManager.cs oluşturdum").
+- Bir script'i kaydedince Unity'nin onu derlemesi için Unity penceresine geçmem gerektiğini hatırlat (Unity arka planda derler).
