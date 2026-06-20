@@ -8,10 +8,10 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 5 — Save/load ✅ |
-| **Son çalışan özellik** | Gold + son item PlayerPrefs ile kaydedilir/yüklenir |
+| **Aşama** | 3 — Forge timer ✅ |
+| **Son çalışan özellik** | FORGE 3 sn geri sayım → item üretimi, sürede buton kilitli |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Forge timer (idle üretim süresi) |
+| **Sonraki hedef** | Anvil yükseltme (seviye, çağ, forge süresi) |
 | **Henüz yok** | Offline kazanç, anvil yükseltme, envanter, ItemDatabase |
 
 ### Sistem Haritası (AI için hızlı referans)
@@ -91,8 +91,8 @@ EventSystem
 | 1 | Temel forge döngüsü (gold + buton + UI) | ✅ | Forge → item → sell → gold |
 | 2 | Item ikonu | ✅ | Placeholder PNG + UI Image |
 | 2b | ItemDatabase | ⏳ | İleride |
-| 3 | Forge timer (üretim süresi) | 🔄 | Sırada |
-| 4 | Anvil / çağ yükseltme | ⏳ | — |
+| 3 | Forge timer (üretim süresi) | ✅ | 3 sn, geri sayım UI |
+| 4 | Anvil yükseltme / çağ | 🔄 | Sırada |
 | 5 | Save / load (JSON + PlayerPrefs) | ✅ | gold + lastItemIndex |
 | 6 | Offline / idle kazanç | ⏳ | — |
 | 7+ | Era, PvP, clan vb. | ⏳ | Spec'e göre ileride |
@@ -102,6 +102,25 @@ EventSystem
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-20] Forge timer: geri sayım ve buton kilidi
+
+**Aşama:** 3 — Forge timer
+
+**Ne yapıldı:**
+- `ForgeButtonHandler`: Coroutine ile `forgeDurationSeconds` (varsayılan 3 sn) bekleme.
+- Forge süresince buton `interactable = false`.
+- `ForgeTimerText` UI ile `Forging... Xs` geri sayımı.
+- Sahneye `ForgeTimerText` eklendi, referanslar bağlandı.
+
+**Test kriteri:**
+- FORGE → 3-2-1 sayar → item gelir → buton tekrar aktif.
+
+**AI bağlam notları:**
+- Forge sırasında önceki item ekranda kalabilir (bilinen UX durumu).
+- Sıradaki: AnvilManager (seviye, çağ, süre/gold maliyeti).
+
+---
 
 ### [2026-06-20] Save/load: gold ve son item kalıcılığı (PlayerPrefs + JSON)
 

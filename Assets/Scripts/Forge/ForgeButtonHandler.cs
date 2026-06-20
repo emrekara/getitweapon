@@ -1,16 +1,21 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// FORGE butonuna basildiginda listeden rastgele item uretir; metin ve ikon gosterir.
+// FORGE butonuna basildiginda sure bekler, sonra rastgele item uretir.
 public class ForgeButtonHandler : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI lastItemText;
+    [SerializeField] private TextMeshProUGUI forgeTimerText;
     [SerializeField] private Image itemIcon;
+    [SerializeField] private Button forgeButton;
     [SerializeField] private ItemData[] forgeableItems;
     [SerializeField] private SaveManager saveManager;
+    [SerializeField] private float forgeDurationSeconds = 3f;
 
     private ItemData lastForgedItem;
+    private bool isForging;
 
     /// <summary>Son forge edilen item; sat butonu bunu kullanir.</summary>
     public ItemData LastForgedItem => lastForgedItem;
@@ -52,13 +57,42 @@ public class ForgeButtonHandler : MonoBehaviour
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnForgeClicked()
     {
-        if (forgeableItems == null || forgeableItems.Length == 0) return;
+        if (isForging || forgeableItems == null || forgeableItems.Length == 0) return;
+
+        StartCoroutine(ForgeRoutine());
+    }
+
+    private IEnumerator ForgeRoutine()
+    {
+        isForging = true;
+
+        if (forgeButton != null)
+            forgeButton.interactable = false;
+
+        float remaining = forgeDurationSeconds;
+
+        while (remaining > 0f)
+        {
+            if (forgeTimerText != null)
+                forgeTimerText.text = $"Forging... {Mathf.CeilToInt(remaining)}s";
+
+            yield return null;
+            remaining -= Time.deltaTime;
+        }
+
+        if (forgeTimerText != null)
+            forgeTimerText.text = string.Empty;
 
         int randomIndex = Random.Range(0, forgeableItems.Length);
         lastForgedItem = forgeableItems[randomIndex];
 
         RefreshLastItemDisplay();
         saveManager?.SaveGame();
+
+        isForging = false;
+
+        if (forgeButton != null)
+            forgeButton.interactable = true;
     }
 
     private void RefreshLastItemDisplay()
