@@ -19,6 +19,5 @@ public class SellButtonHandler : MonoBehaviour
         goldDisplayUI.RefreshDisplay();
 
         forgeButtonHandler.ClearLastItem();
-        lastItemText.text = "No item yet";
     }
 }

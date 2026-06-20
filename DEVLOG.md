@@ -8,10 +8,10 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 1 — Temel Forge Döngüsü (MVP) ✅ |
-| **Son çalışan özellik** | FORGE → rastgele item üret → SELL → gold artışı |
+| **Aşama** | 2 — Item ikonu ✅ |
+| **Son çalışan özellik** | FORGE → item ikonu + metin → SELL → gold artışı |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Item ikonu, save/load, forge timer (idle) |
+| **Sonraki hedef** | Save/load, forge timer (idle) |
 | **Henüz yok** | Offline kazanç, anvil yükseltme, envanter, ItemDatabase |
 
 ### Sistem Haritası (AI için hızlı referans)
@@ -30,14 +30,13 @@ ItemData (ScriptableObject)
   └── Create: Assets → Create → GetItWeapon → Item Data
 
 ForgeButtonHandler (ForgeButton üzerinde)
-  ├── forgeableItems[] (ItemData listesi)
-  ├── lastItemText referansı
-  ├── OnForgeClicked() → rastgele item, LastItemText günceller
-  └── ClearLastItem() → satış sonrası temizlik
+  ├── forgeableItems[], lastItemText, itemIcon (Image)
+  ├── OnForgeClicked() → rastgele item, metin + ikon gösterir
+  └── ClearLastItem() → metin + ikon temizler
 
 SellButtonHandler (SellButton üzerinde)
-  ├── forgeButtonHandler, economyManager, goldDisplayUI, lastItemText
-  └── OnSellClicked() → sellPrice kadar gold, "No item yet"
+  ├── forgeButtonHandler, economyManager, goldDisplayUI
+  └── OnSellClicked() → sellPrice kadar gold, ClearLastItem çağırır
 ```
 
 ### Klasör Yapısı (Scripts)
@@ -54,12 +53,17 @@ Assets/Scripts/
 Assets/ScriptableObjects/Items/
 ├── StoneSword_T1.asset
 └── StoneAxe_T1.asset
+
+Assets/Art/Icons/
+├── icon_sword.png
+└── icon_axe.png
 ```
 
 ### UI Hierarchy (SampleScene)
 
 ```
 Canvas
+├── ItemIcon (Image, forge ikonu)
 ├── GoldText (+ GoldDisplayUI)
 ├── ForgeButton (+ ForgeButtonHandler) → OnClick: OnForgeClicked
 ├── LastItemText
@@ -76,7 +80,8 @@ EventSystem
 |---|-------|-------|-----|
 | 0 | Proje kurulumu, spec, Cursor kuralları | ✅ | `forge-master-spec.md`, `.cursor/rules/` |
 | 1 | Temel forge döngüsü (gold + buton + UI) | ✅ | Forge → item → sell → gold |
-| 2 | Item ikonu, ItemDatabase | ⏳ | Sırada |
+| 2 | Item ikonu | ✅ | Placeholder PNG + UI Image |
+| 2b | ItemDatabase | ⏳ | İleride |
 | 3 | Anvil / forge yükseltme (timer) | ⏳ | Sırada |
 | 4 | Offline / idle kazanç | ⏳ | — |
 | 5 | Save / load (JSON + PlayerPrefs) | ⏳ | Sırada |
@@ -87,6 +92,41 @@ EventSystem
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-20] Forge item ikonları ve UI Image entegrasyonu
+
+**Aşama:** 2 — Item ikonu
+
+**Ne yapıldı:**
+- `Assets/Art/Icons/` altına placeholder kılıç ve balta PNG'leri eklendi.
+- `ItemData.Icon` alanına sprite'lar bağlandı (StoneSword_T1, StoneAxe_T1).
+- Sahneye `ItemIcon` UI Image eklendi; forge'da ikon gösterilir, SELL'de kaybolur.
+- `ForgeButtonHandler` güncellendi: `Image itemIcon` referansı, `ClearDisplay()`.
+- `StoneAxe_T1` item adı düzeltildi: "Stone Axe".
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Art/Icons/icon_sword.png`, `icon_axe.png` (yeni)
+- `Assets/Scripts/Forge/ForgeButtonHandler.cs`
+- `Assets/Scripts/Forge/SellButtonHandler.cs`
+- `Assets/Scenes/SampleScene.unity`
+- `Assets/ScriptableObjects/Items/StoneSword_T1.asset`
+- `Assets/ScriptableObjects/Items/StoneAxe_T1.asset`
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- ItemIcon Image oluşturuldu (128x128, orta-üst konum).
+- ForgeButton → Item Icon referansı bağlandı.
+
+**Test kriteri:**
+- FORGE → kılıç/balta ikonu + isim görünür.
+- SELL → ikon kaybolur, gold artar.
+
+**AI bağlam notları:**
+- İkonlar placeholder; gerçek art `Assets/Art/Icons/` içine PNG koyup ItemData'ya bağla.
+- Sıradaki özellik: save/load (gold kalıcılığı).
+- SellButtonHandler'da `lastItemText` referansı artık kullanılmıyor (temizlik yapılabilir).
+
+---
 
 ### [2026-06-20] Temel forge-sell oyun döngüsü ve ScriptableObject item sistemi
 
