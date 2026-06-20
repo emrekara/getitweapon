@@ -15,6 +15,12 @@ public class EconomyManager : MonoBehaviour
         currentGold = startingGold;
     }
 
+    /// <summary>Kayit yuklerken gold degerini ayarlar.</summary>
+    public void SetGold(double amount)
+    {
+        currentGold = amount < 0 ? 0 : amount;
+    }
+
     /// <summary>Altın ekler (satış, ödül vb.).</summary>
     public void AddGold(double amount)
     {

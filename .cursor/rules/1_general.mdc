@@ -48,6 +48,7 @@ Talimatları "şunu yapabilirsin" gibi belirsiz yazma. "Şunu yap: ..." gibi net
 ## ADIM ADIM İLERLEME — ONAY ZORUNLU
 - Her mesajda **yalnızca TEK bir adım** ver. Birden fazla adımı aynı mesajda listeleme.
 - Kullanıcı Unity'de tamamen yeni; buton yerleştirme gibi temel işlemleri de tek tek anlat.
+- **Klasör oluşturma:** 5 adımlık anlatım yerine sadece hedef yolu yaz (örn. "Assets/Scripts/Core klasörünü oluştur"). Kullanıcı bu konuda pratik kazandıysa kısa tut.
 - Her adımda **tam konum** belirt: hangi pencere (Hierarchy, Inspector, Project, Game, Scene), hangi menü yolu, neye tıklanacak.
 - Adım sonunda kullanıcıdan **açık onay bekle**: "tamam", "hazırım", "devam" gibi bir yanıt gelmeden bir sonraki adıma geçme.
 - Kullanıcı takılırsa veya hata bildirirse, o adımı tekrarla veya düzelt; sonraki adıma atlama.

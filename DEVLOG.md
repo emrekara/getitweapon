@@ -8,10 +8,10 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 2 — Item ikonu ✅ |
-| **Son çalışan özellik** | FORGE → item ikonu + metin → SELL → gold artışı |
+| **Aşama** | 5 — Save/load ✅ |
+| **Son çalışan özellik** | Gold + son item PlayerPrefs ile kaydedilir/yüklenir |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Save/load, forge timer (idle) |
+| **Sonraki hedef** | Forge timer (idle üretim süresi) |
 | **Henüz yok** | Offline kazanç, anvil yükseltme, envanter, ItemDatabase |
 
 ### Sistem Haritası (AI için hızlı referans)
@@ -35,14 +35,22 @@ ForgeButtonHandler (ForgeButton üzerinde)
   └── ClearLastItem() → metin + ikon temizler
 
 SellButtonHandler (SellButton üzerinde)
-  ├── forgeButtonHandler, economyManager, goldDisplayUI
-  └── OnSellClicked() → sellPrice kadar gold, ClearLastItem çağırır
+  ├── forgeButtonHandler, economyManager, goldDisplayUI, saveManager
+  └── OnSellClicked() → gold artar, ClearLastItem, SaveGame
+
+SaveManager (sahne objesi)
+  ├── PlayerPrefs + JSON (GameSaveData)
+  ├── Start() → LoadGame, OnApplicationQuit/Pause → SaveGame
+  └── gold + lastItemIndex kaydeder
 ```
 
 ### Klasör Yapısı (Scripts)
 
 ```
 Assets/Scripts/
+├── Core/
+│   ├── GameSaveData.cs
+│   └── SaveManager.cs
 ├── Economy/EconomyManager.cs
 ├── Forge/
 │   ├── ForgeButtonHandler.cs
@@ -69,6 +77,7 @@ Canvas
 ├── LastItemText
 └── SellButton (+ SellButtonHandler) → OnClick: OnSellClicked
 EconomyManager (+ EconomyManager)
+SaveManager (+ SaveManager)
 EventSystem
 ```
 
@@ -82,16 +91,37 @@ EventSystem
 | 1 | Temel forge döngüsü (gold + buton + UI) | ✅ | Forge → item → sell → gold |
 | 2 | Item ikonu | ✅ | Placeholder PNG + UI Image |
 | 2b | ItemDatabase | ⏳ | İleride |
-| 3 | Anvil / forge yükseltme (timer) | ⏳ | Sırada |
-| 4 | Offline / idle kazanç | ⏳ | — |
-| 5 | Save / load (JSON + PlayerPrefs) | ⏳ | Sırada |
-| 6+ | Era, PvP, clan vb. | ⏳ | Spec'e göre ileride |
+| 3 | Forge timer (üretim süresi) | 🔄 | Sırada |
+| 4 | Anvil / çağ yükseltme | ⏳ | — |
+| 5 | Save / load (JSON + PlayerPrefs) | ✅ | gold + lastItemIndex |
+| 6 | Offline / idle kazanç | ⏳ | — |
+| 7+ | Era, PvP, clan vb. | ⏳ | Spec'e göre ileride |
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-20] Save/load: gold ve son item kalıcılığı (PlayerPrefs + JSON)
+
+**Aşama:** 5 — Save/load
+
+**Ne yapıldı:**
+- `GameSaveData`: gold + lastItemIndex.
+- `SaveManager`: Load on Start, Save on quit/pause/forge/sell.
+- `EconomyManager.SetGold()` kayıt yüklemesi için.
+- `ForgeButtonHandler`: GetLastItemIndex, RestoreLastItem.
+- Sahneye SaveManager objesi ve referans bağlantıları.
+
+**Test kriteri:**
+- Play → forge/sell → stop → play → gold ve item durumu korunur.
+
+**AI bağlam notları:**
+- PlayerPrefs cihaz bazlı; ileride sunucu otoriter kayıt gelecek.
+- Sıradaki: forge timer (üretim süresi).
+
+---
 
 ### [2026-06-20] Forge item ikonları ve UI Image entegrasyonu
 

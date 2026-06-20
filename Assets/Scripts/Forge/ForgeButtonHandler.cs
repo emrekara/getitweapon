@@ -8,6 +8,7 @@ public class ForgeButtonHandler : MonoBehaviour
     [SerializeField] private TextMeshProUGUI lastItemText;
     [SerializeField] private Image itemIcon;
     [SerializeField] private ItemData[] forgeableItems;
+    [SerializeField] private SaveManager saveManager;
 
     private ItemData lastForgedItem;
 
@@ -21,6 +22,33 @@ public class ForgeButtonHandler : MonoBehaviour
         ClearDisplay();
     }
 
+    /// <summary>Kayit icin son item'in listedeki indeksini dondurur (-1 = yok).</summary>
+    public int GetLastItemIndex()
+    {
+        if (lastForgedItem == null || forgeableItems == null) return -1;
+
+        for (int i = 0; i < forgeableItems.Length; i++)
+        {
+            if (forgeableItems[i] == lastForgedItem)
+                return i;
+        }
+
+        return -1;
+    }
+
+    /// <summary>Kayittan son forge edilen item'i geri yukler.</summary>
+    public void RestoreLastItem(int index)
+    {
+        if (forgeableItems == null || index < 0 || index >= forgeableItems.Length)
+        {
+            ClearLastItem();
+            return;
+        }
+
+        lastForgedItem = forgeableItems[index];
+        RefreshLastItemDisplay();
+    }
+
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnForgeClicked()
     {
@@ -30,6 +58,7 @@ public class ForgeButtonHandler : MonoBehaviour
         lastForgedItem = forgeableItems[randomIndex];
 
         RefreshLastItemDisplay();
+        saveManager?.SaveGame();
     }
 
     private void RefreshLastItemDisplay()
