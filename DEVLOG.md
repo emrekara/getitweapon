@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 3 — Forge timer ✅ |
-| **Son çalışan özellik** | FORGE 3 sn geri sayım → item üretimi, sürede buton kilitli |
+| **Aşama** | 4 — Anvil yükseltme ✅ |
+| **Son çalışan özellik** | Anvil upgrade (gold harcar, seviye/çağ), forge süresi AnvilManager'dan |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Anvil yükseltme (seviye, çağ, forge süresi) |
-| **Henüz yok** | Offline kazanç, anvil yükseltme, envanter, ItemDatabase |
+| **Sonraki hedef** | Offline kazanç, ItemDatabase, forge UX iyileştirmeleri |
+| **Henüz yok** | Offline kazanç, envanter, ItemDatabase, tier/era ölçekleme |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -30,54 +30,46 @@ ItemData (ScriptableObject)
   └── Create: Assets → Create → GetItWeapon → Item Data
 
 ForgeButtonHandler (ForgeButton üzerinde)
-  ├── forgeableItems[], lastItemText, itemIcon (Image)
-  ├── OnForgeClicked() → rastgele item, metin + ikon gösterir
-  └── ClearLastItem() → metin + ikon temizler
+  ├── anvilManager.GetForgeDuration(), forgeTimerText
+  └── Coroutine ile forge + SaveGame
 
-SellButtonHandler (SellButton üzerinde)
-  ├── forgeButtonHandler, economyManager, goldDisplayUI, saveManager
-  └── OnSellClicked() → gold artar, ClearLastItem, SaveGame
+AnvilManager (sahne objesi)
+  ├── GetForgeDuration(), GetUpgradeCost(), TryUpgrade(), CurrentEra
+  └── baseForgeDuration, baseUpgradeCost Inspector'dan
 
-SaveManager (sahne objesi)
-  ├── PlayerPrefs + JSON (GameSaveData)
-  ├── Start() → LoadGame, OnApplicationQuit/Pause → SaveGame
-  └── gold + lastItemIndex kaydeder
+AnvilUpgradeHandler (UpgradeButton üzerinde)
+  └── OnUpgradeClicked, yetersiz gold → "Need XXg"
+
+SaveManager → GameSaveData: gold, lastItemIndex, anvilLevel
+
+Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug menüsü
 ```
 
 ### Klasör Yapısı (Scripts)
 
 ```
 Assets/Scripts/
-├── Core/
-│   ├── GameSaveData.cs
-│   └── SaveManager.cs
+├── Core/ (GameSaveData, SaveManager)
 ├── Economy/EconomyManager.cs
-├── Forge/
-│   ├── ForgeButtonHandler.cs
-│   ├── SellButtonHandler.cs
-│   └── ItemData.cs
-└── UI/GoldDisplayUI.cs
+├── Forge/ (ForgeButtonHandler, SellButtonHandler, ItemData, AnvilManager)
+└── UI/ (GoldDisplayUI, AnvilUpgradeHandler)
 
-Assets/ScriptableObjects/Items/
-├── StoneSword_T1.asset
-└── StoneAxe_T1.asset
-
-Assets/Art/Icons/
-├── icon_sword.png
-└── icon_axe.png
+Assets/Editor/DebugSaveMenu.cs
 ```
 
 ### UI Hierarchy (SampleScene)
 
 ```
 Canvas
-├── ItemIcon (Image, forge ikonu)
+├── AnvilInfoText
+├── UpgradeButton (+ AnvilUpgradeHandler)
+├── ForgeTimerText
+├── ItemIcon
 ├── GoldText (+ GoldDisplayUI)
-├── ForgeButton (+ ForgeButtonHandler) → OnClick: OnForgeClicked
+├── ForgeButton (+ ForgeButtonHandler)
 ├── LastItemText
-└── SellButton (+ SellButtonHandler) → OnClick: OnSellClicked
-EconomyManager (+ EconomyManager)
-SaveManager (+ SaveManager)
+└── SellButton (+ SellButtonHandler)
+EconomyManager | SaveManager | AnvilManager
 EventSystem
 ```
 
@@ -91,10 +83,10 @@ EventSystem
 | 1 | Temel forge döngüsü (gold + buton + UI) | ✅ | Forge → item → sell → gold |
 | 2 | Item ikonu | ✅ | Placeholder PNG + UI Image |
 | 2b | ItemDatabase | ⏳ | İleride |
-| 3 | Forge timer (üretim süresi) | ✅ | 3 sn, geri sayım UI |
-| 4 | Anvil yükseltme / çağ | 🔄 | Sırada |
-| 5 | Save / load (JSON + PlayerPrefs) | ✅ | gold + lastItemIndex |
-| 6 | Offline / idle kazanç | ⏳ | — |
+| 3 | Forge timer (üretim süresi) | ✅ | AnvilManager'dan süre |
+| 4 | Anvil yükseltme / çağ | ✅ | Upgrade UI + save |
+| 5 | Save / load (JSON + PlayerPrefs) | ✅ | gold + lastItemIndex + anvilLevel |
+| 6 | Offline / idle kazanç | ⏳ | Sırada |
 | 7+ | Era, PvP, clan vb. | ⏳ | Spec'e göre ileride |
 
 ---
@@ -102,6 +94,38 @@ EventSystem
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-20] Anvil upgrade sistemi, forge süresi kaynağı ve debug gold menüsü
+
+**Aşama:** 4 — Anvil yükseltme
+
+**Ne yapıldı:**
+- `AnvilManager`: seviye, çağ, forge süresi, upgrade maliyeti.
+- `AnvilUpgradeHandler`: UPGRADE butonu, yetersiz gold uyarısı, kod ile OnClick.
+- Forge süresi artık yalnızca `AnvilManager.baseForgeDuration`'dan okunur.
+- `GameSaveData.anvilLevel` kayda eklendi.
+- `Assets/Editor/DebugSaveMenu.cs`: gold ekle (+100/+1000/input), kayıt sil.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Forge/AnvilManager.cs` (yeni)
+- `Assets/Scripts/UI/AnvilUpgradeHandler.cs` (yeni)
+- `Assets/Editor/DebugSaveMenu.cs` (yeni)
+- `Assets/Scripts/Forge/ForgeButtonHandler.cs`
+- `Assets/Scripts/Core/GameSaveData.cs`, `SaveManager.cs`
+- `Assets/Scenes/SampleScene.unity`
+- `DEVLOG.md`
+
+**Test kriteri:**
+- UPGRADE → gold azalır, Anvil Lv artar, maliyet ekranda doğru.
+- Forge süresi AnvilManager Inspector'dan ayarlanır.
+- Debug menü ile gold eklenebilir.
+
+**AI bağlam notları:**
+- ForgeButton'daki eski `forgeDurationSeconds` kaldırıldı.
+- Upgrade buton text raycastTarget kod ile kapatılır.
+- Sıradaki: offline kazanç veya ItemDatabase.
+
+---
 
 ### [2026-06-20] Forge timer: geri sayım ve buton kilidi
 

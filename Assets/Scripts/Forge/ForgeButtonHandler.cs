@@ -12,7 +12,7 @@ public class ForgeButtonHandler : MonoBehaviour
     [SerializeField] private Button forgeButton;
     [SerializeField] private ItemData[] forgeableItems;
     [SerializeField] private SaveManager saveManager;
-    [SerializeField] private float forgeDurationSeconds = 3f;
+    [SerializeField] private AnvilManager anvilManager;
 
     private ItemData lastForgedItem;
     private bool isForging;
@@ -69,12 +69,19 @@ public class ForgeButtonHandler : MonoBehaviour
         if (forgeButton != null)
             forgeButton.interactable = false;
 
-        float remaining = forgeDurationSeconds;
+        float duration = anvilManager != null ? anvilManager.GetForgeDuration() : 3f;
+        float remaining = duration;
 
         while (remaining > 0f)
         {
             if (forgeTimerText != null)
-                forgeTimerText.text = $"Forging... {Mathf.CeilToInt(remaining)}s";
+            {
+                // 1 saniyeden kisa surelerde ondalik goster (or. 0.5s)
+                string timeText = remaining < 1f
+                    ? $"{remaining:0.0}s"
+                    : $"{Mathf.CeilToInt(remaining)}s";
+                forgeTimerText.text = $"Forging... {timeText}";
+            }
 
             yield return null;
             remaining -= Time.deltaTime;

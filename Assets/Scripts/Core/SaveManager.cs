@@ -8,6 +8,7 @@ public class SaveManager : MonoBehaviour
     [SerializeField] private EconomyManager economyManager;
     [SerializeField] private ForgeButtonHandler forgeButtonHandler;
     [SerializeField] private GoldDisplayUI goldDisplayUI;
+    [SerializeField] private AnvilManager anvilManager;
 
     private void Start()
     {
@@ -34,7 +35,8 @@ public class SaveManager : MonoBehaviour
         GameSaveData data = new GameSaveData
         {
             gold = economyManager.CurrentGold,
-            lastItemIndex = forgeButtonHandler.GetLastItemIndex()
+            lastItemIndex = forgeButtonHandler.GetLastItemIndex(),
+            anvilLevel = anvilManager != null ? anvilManager.AnvilLevel : 1
         };
 
         string json = JsonUtility.ToJson(data);
@@ -52,6 +54,9 @@ public class SaveManager : MonoBehaviour
 
         economyManager.SetGold(data.gold);
         forgeButtonHandler.RestoreLastItem(data.lastItemIndex);
+
+        if (anvilManager != null)
+            anvilManager.SetAnvilLevel(data.anvilLevel);
 
         if (goldDisplayUI != null)
             goldDisplayUI.RefreshDisplay();
