@@ -16,6 +16,7 @@ public class ForgeButtonHandler : MonoBehaviour
 
     private ItemData lastForgedItem;
     private bool isForging;
+    private Coroutine blockedMessageCoroutine;
 
     /// <summary>Son forge edilen item; sat butonu bunu kullanir.</summary>
     public ItemData LastForgedItem => lastForgedItem;
@@ -23,11 +24,15 @@ public class ForgeButtonHandler : MonoBehaviour
     /// <summary>Forge devam ediyor mu; satis bu surede engellenir.</summary>
     public bool IsForging => isForging;
 
+    /// <summary>Satilmamis item varsa true; yeni forge bu durumda engellenir.</summary>
+    public bool HasUnsoldItem => lastForgedItem != null;
+
     /// <summary>Satistan sonra son item kaydini ve ekrani temizler.</summary>
     public void ClearLastItem()
     {
         lastForgedItem = null;
         ClearDisplay();
+        RefreshForgeButtonState();
     }
 
     /// <summary>Kayit icin son item'in listedeki indeksini dondurur (-1 = yok).</summary>
@@ -48,12 +53,18 @@ public class ForgeButtonHandler : MonoBehaviour
 
         lastForgedItem = itemDatabase.GetItem(index);
         RefreshLastItemDisplay();
+        RefreshForgeButtonState();
     }
 
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnForgeClicked()
     {
         if (isForging || itemDatabase == null) return;
+        if (lastForgedItem != null)
+        {
+            ShowBlockedMessage();
+            return;
+        }
         if (itemDatabase.GetItemsForEra(GetCurrentEra()).Length == 0) return;
 
         StartCoroutine(ForgeRoutine());
@@ -80,9 +91,7 @@ public class ForgeButtonHandler : MonoBehaviour
     private IEnumerator ForgeRoutine()
     {
         isForging = true;
-
-        if (forgeButton != null)
-            forgeButton.interactable = false;
+        RefreshForgeButtonState();
 
         HideItemDisplay();
 
@@ -111,8 +120,7 @@ public class ForgeButtonHandler : MonoBehaviour
         if (lastForgedItem == null)
         {
             isForging = false;
-            if (forgeButton != null)
-                forgeButton.interactable = true;
+            RefreshForgeButtonState();
             yield break;
         }
 
@@ -120,9 +128,7 @@ public class ForgeButtonHandler : MonoBehaviour
         saveManager?.SaveGame();
 
         isForging = false;
-
-        if (forgeButton != null)
-            forgeButton.interactable = true;
+        RefreshForgeButtonState();
     }
 
     /// <summary>Ekrandaki item metnini guncel anvil seviyesine gore yeniler.</summary>
@@ -175,5 +181,34 @@ public class ForgeButtonHandler : MonoBehaviour
             itemIcon.sprite = null;
             itemIcon.enabled = false;
         }
+    }
+
+    /// <summary>Forge butonunun etkilesim durumunu satilmamis item ve forge durumuna gore gunceller.</summary>
+    private void RefreshForgeButtonState()
+    {
+        if (forgeButton == null) return;
+        forgeButton.interactable = !isForging && lastForgedItem == null;
+    }
+
+    /// <summary>Satilmamis item varken forge denemesinde kisa uyari gosterir.</summary>
+    private void ShowBlockedMessage()
+    {
+        if (blockedMessageCoroutine != null)
+            StopCoroutine(blockedMessageCoroutine);
+
+        blockedMessageCoroutine = StartCoroutine(BlockedMessageRoutine());
+    }
+
+    private IEnumerator BlockedMessageRoutine()
+    {
+        if (forgeTimerText != null)
+            forgeTimerText.text = "Sell item first!";
+
+        yield return new WaitForSeconds(2f);
+
+        if (!isForging && forgeTimerText != null)
+            forgeTimerText.text = string.Empty;
+
+        blockedMessageCoroutine = null;
     }
 }

@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 8 — Anvil upgrade timer + level config ✅ |
-| **Son çalışan özellik** | Parametric upgrade timer (level aralığı × çarpan), offline tamamlama, anında/timer mod |
+| **Aşama** | 9 — Satılmamış item koruması ✅ |
+| **Son çalışan özellik** | Forge, elde satılmamış item varken engellenir; SELL sonrası tekrar açılır |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Envanter veya satılmamış item koruması |
-| **Henüz yok** | Envanter, REST remote config, tech tree |
+| **Sonraki hedef** | Envanter sistemi (çoklu item) |
+| **Henüz yok** | Envanter grid, REST remote config, tech tree |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -31,6 +31,7 @@ ItemData (ScriptableObject)
 
 ForgeButtonHandler (ForgeButton üzerinde)
   ├── itemDatabase.GetRandomItemForEra(CurrentEra), anvilManager
+  ├── HasUnsoldItem → forge engeli; RefreshForgeButtonState()
   ├── Forge başlayınca HideItemDisplay(), IsForging
   ├── OnAnvilLevelChanged → RefreshLastItemDisplay (sell fiyat UI)
   └── Coroutine ile forge + SaveGame
@@ -125,12 +126,40 @@ EventSystem
 | 7b | Satış fiyatı anvil çarpanı | ✅ | GetScaledSellPrice + UI event |
 | 7c | Era item'ları | ✅ | 4 çağ, 12 item + çağ ikonları |
 | 8 | Anvil upgrade timer | ✅ | Config SO, level aralığı, save/load, offline |
+| 9 | Satılmamış item koruması | ✅ | Forge öncesi SELL zorunluluğu, buton kilidi |
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-21] Satılmamış item koruması — forge öncesi SELL zorunluluğu
+
+**Aşama:** 9 — Satılmamış item koruması
+
+**Ne yapıldı:**
+- Elde satılmamış item varken yeni forge başlatılamaz; item kaybı engellendi.
+- `HasUnsoldItem` property; forge butonu otomatik kilitlenir/açılır.
+- Engellenmiş forge denemesinde `ForgeTimerText`: "Sell item first!" (2 sn).
+- Kayıt yüklemesinde (`RestoreLastItem`) buton durumu senkronize edilir.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Forge/ForgeButtonHandler.cs`
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:** Yok; mevcut sahne referansları yeterli.
+
+**Test kriteri:**
+- Forge → item gelir → FORGE pasif / tıklanınca uyarı.
+- SELL → FORGE tekrar aktif.
+- Kayıt yükle → item varsa FORGE kilitli.
+
+**AI bağlam notları:**
+- Tam envanter henüz yok; tek slot koruma katmanı.
+- Sıradaki: çoklu item envanteri veya auto-sell filtresi (spec §3.1).
+
+---
 
 ### [2026-06-21] TextMesh Pro font asset Unity 6 uyumu
 
