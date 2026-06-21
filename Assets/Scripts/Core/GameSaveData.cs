@@ -52,6 +52,9 @@ public class GameSaveData
     // Son cikis zamani (Unix saniye). Offline kazanc hesabi icin.
     // NOT: Simdilik cihaz saati; ileride sunucu zamani kullanilacak.
     public double lastQuitTimestamp;
+
+    // Mini oyun toplam sans puani
+    public int minigameTotalScore;
 }
 
 /// <summary>

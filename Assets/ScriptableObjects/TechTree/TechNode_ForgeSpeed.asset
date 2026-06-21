@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TechNode_ForgeSpeed
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeData
   nodeId: forge_speed
-  displayNameKey: 50
+  displayNameKey: 58
   effectType: 0
   maxLevel: 5
   valuePerLevel: 0.1

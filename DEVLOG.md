@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 18 — Hammers meta para ✅ |
-| **Son çalışan özellik** | Çekiç ekonomisi; forge maliyeti; 45 sn yenilenme; API-ready config katmanı |
+| **Aşama** | 19 — Minigame backend ✅ (UI kapalı) |
+| **Son çalışan özellik** | Çekiç + forge + envanter ana döngü; minigame kodu kayıtlı ama ekranda yok |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Aşama 19 — Minigame puanı (spec sırası) |
-| **Henüz yok** | Minigame, tech dallanma, remote config API bağlantısı |
+| **Sonraki hedef** | Aşama 20 — Mobile UI pass |
+| **Henüz yok** | Hero/combat/PvP, 4-slot equipment UI, minigame UI, remote config API |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -310,12 +310,59 @@ HammerConfigProvider.ApplyRemoteConfig(remote);
 | 16 | Tech tree iskelet | ✅ | 3 düğüm, Anvil/Offline entegrasyonu, panel UI |
 | 17 | Tech araştırma timer | ✅ | Gold + süre, tek slot, save/load, offline tamamlama |
 | 18 | Hammers meta para | ✅ | Forge maliyeti, regen, günlük doldurma, API-ready config |
+| 19 | Minigame backend | ✅ | Manager + save + config; UI `MinigameFeatures.UiEnabled=false` |
+| 20 | Mobile UI pass | ⏳ | Sıradaki |
+
+---
+
+## Ürün Yönü (Spec vs MVP)
+
+> Forge Master klonu: **idle forge çekirdeği önce**, hero/combat/PvP sonra. Mevcut envanter geçici MVP.
+
+| Spec (hedef) | Şimdi (MVP) | Ne zaman |
+|--------------|-------------|----------|
+| Hero attack/defense/health + XP | Yok | Hero aşamasında |
+| PvP / combat loop | Yok | Sosyal aşama (online) |
+| Equipment: weapon, armor, earring, necklace (giyilen) | 8 slot grid, kategori enum hazır, çoğu item Weapon | Equipment refactor |
+| Item sat → gold | ✅ | Çalışıyor |
+| Forge → güçlen → ilerle | ✅ kısmen (anvil, tech) | Devam |
+| Idle/offline gold | ✅ | Çalışıyor |
+
+**Envanter notu:** `ItemCategory` (Weapon/Armor/Earring/Necklace) spec ile uyumlu; 8 slot şimdilik “depo + karşılaştırma” için. Sonraki adım: **4 equipment slot** (giyilen) + ayrı stash veya kategori başına 1 slot (zaten var) → UI’da giyilen/yedek ayrımı.
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-21] Forge otomasyon düzeltmeleri, minigame backend, UI pass hazırlığı
+
+**Aşama:** 19 + forge polish — Aşama 20 öncesi
+
+**Ne yapıldı:**
+- **OTO SAT kapalı:** Zayıf kopya artık satılmaz → `RejectDuplicate` + OTO DÖV zinciri durur; mesaj ayrı (`Satıldı` vs `OTO SAT`).
+- **ForgeItemActionResolver:** Karar matrisi tek yerde; Editor senaryo testleri (`Forge Senaryolarini Test Et`).
+- **Minigame backend:** Manager, save (`minigameTotalScore`), config SO; UI kapalı (`MinigameFeatures.UiEnabled=false`).
+- **Tech node SO:** `displayNameKey` enum kayması düzeltildi (yeni lokalizasyon anahtarları).
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Forge/ForgeAutomationManager.cs`, `ForgeItemAction.cs`, `ForgeButtonHandler.cs`
+- `Assets/Scripts/Minigame/` (Manager, Settings, ConfigProvider, MinigameFeatures)
+- `Assets/Scripts/UI/MinigamePanelUI.cs` (devre dışı)
+- `Assets/Editor/ForgeAutomationScenarioTests.cs`
+- `Assets/Resources/MainMinigameSettings.asset`
+- `Assets/ScriptableObjects/TechTree/*.asset`
+- `DEVLOG.md` (ürün yönü tablosu)
+
+**Test kriteri:**
+- OTO SAT kapalı + OTO DÖV açık + zayıf silah → 1 çekiç harcanır, satış yok, zincir durur.
+- Debug → Forge Senaryolarini Test Et → 11 GECTI.
+- Play → Şans çubuğu görünmez.
+
+**AI bağlam notları:**
+- Sıradaki: **Aşama 20 Mobile UI pass**.
+- Envanter 8 slot geçici; spec’e göre hero equipment (4 slot giyilen) refactor planlanmalı — şimdilik kategori tekilliği korunuyor.
 
 ### [2026-06-21] Aşama 18 — Hammers meta para + API-ready config
 

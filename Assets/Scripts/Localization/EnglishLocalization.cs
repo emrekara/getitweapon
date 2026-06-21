@@ -23,6 +23,7 @@ public static class EnglishLocalization
         { LocalizationKey.AutoSellEraFilterOff, "ERA FILTER: OFF" },
         { LocalizationKey.FilterRangePosition, "({0}/{1})" },
         { LocalizationKey.AutoSoldFeedback, "AUTO SELL: +{0:0}g" },
+        { LocalizationKey.ForgedItemSoldFeedback, "Sold: +{0:0}g" },
         { LocalizationKey.ItemAddedToInventory, "Added to inventory: {0}" },
 
         { LocalizationKey.InventoryFull, "Inventory full!" },
@@ -85,6 +86,12 @@ public static class EnglishLocalization
         { LocalizationKey.TechNodeMaxLevel, "MAX" },
         { LocalizationKey.TechNodeLocked, "Locked" },
 
-        { LocalizationKey.ForgingPercent, "FORGE {0}%" }
+        { LocalizationKey.ForgingPercent, "FORGE {0}%" },
+
+        { LocalizationKey.MinigameScore, "Luck Score: {0}" },
+        { LocalizationKey.MinigamePlayButton, "TRY LUCK" },
+        { LocalizationKey.MinigameWaitForge, "While forging" },
+        { LocalizationKey.MinigameResult, "+{0} pts!" },
+        { LocalizationKey.MinigameAlreadyPlayed, "Already played this forge" }
     };
 }

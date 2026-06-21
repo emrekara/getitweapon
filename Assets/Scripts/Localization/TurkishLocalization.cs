@@ -23,6 +23,7 @@ public static class TurkishLocalization
         { LocalizationKey.AutoSellEraFilterOff, "ÇAĞ FİLTRE: KAPALI" },
         { LocalizationKey.FilterRangePosition, "({0}/{1})" },
         { LocalizationKey.AutoSoldFeedback, "OTO SAT: +{0:0}g" },
+        { LocalizationKey.ForgedItemSoldFeedback, "Satıldı: +{0:0}g" },
         { LocalizationKey.ItemAddedToInventory, "Envantere eklendi: {0}" },
 
         { LocalizationKey.InventoryFull, "Envanter dolu!" },
@@ -85,6 +86,12 @@ public static class TurkishLocalization
         { LocalizationKey.TechNodeMaxLevel, "MAKS" },
         { LocalizationKey.TechNodeLocked, "Kilitli" },
 
-        { LocalizationKey.ForgingPercent, "DÖV %{0}" }
+        { LocalizationKey.ForgingPercent, "DÖV %{0}" },
+
+        { LocalizationKey.MinigameScore, "Şans Puanı: {0}" },
+        { LocalizationKey.MinigamePlayButton, "ŞANS DENE" },
+        { LocalizationKey.MinigameWaitForge, "DÖV sırasında" },
+        { LocalizationKey.MinigameResult, "+{0} puan!" },
+        { LocalizationKey.MinigameAlreadyPlayed, "Bu dövüşte oynadın" }
     };
 }

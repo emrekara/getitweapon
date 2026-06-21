@@ -20,6 +20,7 @@ public class ForgeAutomationManager : MonoBehaviour
     private bool autoSellEraFilterEnabled;
     private int autoSellMaxEraIndex;
     private bool isWaitingForUserDecision;
+    private bool pauseAutoForgeChain;
     private string pendingForgeFeedback;
 
     /// <summary>Auto-forge acik mi.</summary>
@@ -55,6 +56,9 @@ public class ForgeAutomationManager : MonoBehaviour
     /// <summary>Kullanici upgrade sorusuna cevap veriyor mu.</summary>
     public bool IsWaitingForUserDecision => isWaitingForUserDecision;
 
+    /// <summary>OTO DÖV zinciri duraklatildi mi (OTO SAT kapaliyken zayif kopya vb.).</summary>
+    public bool IsAutoForgeChainPaused => pauseAutoForgeChain;
+
     /// <summary>Ayar degistiginde tetiklenir.</summary>
     public event System.Action OnSettingsChanged;
 
@@ -66,8 +70,14 @@ public class ForgeAutomationManager : MonoBehaviour
     /// <summary>Forge tamamlandiginda ForgeButtonHandler tarafindan cagrilir.</summary>
     public void NotifyForgeCompleted()
     {
-        if (autoForgeEnabled && !isWaitingForUserDecision)
+        if (autoForgeEnabled && !isWaitingForUserDecision && !pauseAutoForgeChain)
             TryTriggerAutoForge();
+    }
+
+    /// <summary>Manuel DÖV veya ayar degisikliginde OTO DÖV zincir duraklatmasini kaldirir.</summary>
+    public void ClearAutoForgeChainPause()
+    {
+        pauseAutoForgeChain = false;
     }
 
     /// <summary>Forge edilen item icin auto-sell veya kullanici sorusu calistirir.</summary>
@@ -78,100 +88,53 @@ public class ForgeAutomationManager : MonoBehaviour
         if (forgedItem == null)
             yield break;
 
-        if (inventoryManager != null && inventoryManager.ContainsCategory(forgedItem.Category))
+        ForgeProcessContext context = BuildProcessContext(forgedItem);
+        ForgeItemAction action = ForgeItemActionResolver.Decide(forgedItem, context);
+
+        switch (action)
         {
-            ItemData categoryItem = inventoryManager.GetItemInCategory(forgedItem.Category);
-            bool categoryInventoryFull = inventoryManager.IsFull;
+            case ForgeItemAction.RejectDuplicate:
+                QueueForgeFeedback(GameTexts.ItemCategoryAlreadyInInventory(forgedItem.Category));
+                pauseAutoForgeChain = true;
+                yield break;
 
-            if (ItemComparer.IsStrictlyWorse(forgedItem, categoryItem))
+            case ForgeItemAction.AutoSell:
+                SellForgedItem(forgedItem, isAutoSellAutomation: true);
+                yield break;
+
+            case ForgeItemAction.AddToInventory:
+                if (inventoryManager != null && inventoryManager.TryAddItem(forgedItem))
+                    ShowItemAddedFeedback(forgedItem);
+                yield break;
+
+            case ForgeItemAction.PromptUser:
             {
-                if (autoSellEnabled)
-                    SellForgedItem(forgedItem);
-                else
-                    QueueForgeFeedback(GameTexts.ItemCategoryAlreadyInInventory(forgedItem.Category));
-
+                ItemData referenceItem = context.ContainsCategory && context.CategoryItem != null
+                    ? context.CategoryItem
+                    : context.BestReference;
+                yield return PromptKeepOrSell(forgedItem, referenceItem, context.InventoryFull);
                 yield break;
             }
 
-            if (ItemComparer.AreAllStatsEqual(forgedItem, categoryItem))
-            {
-                if (autoSellEnabled)
-                    SellForgedItem(forgedItem);
-                else
-                    QueueForgeFeedback(GameTexts.ItemCategoryAlreadyInInventory(forgedItem.Category));
-
+            default:
                 yield break;
-            }
-
-            yield return PromptKeepOrSell(forgedItem, categoryItem, categoryInventoryFull);
-            yield break;
         }
+    }
 
-        if (!autoSellEnabled)
+    private ForgeProcessContext BuildProcessContext(ItemData forgedItem)
+    {
+        return new ForgeProcessContext
         {
-            if (inventoryManager != null && !inventoryManager.TryAddItem(forgedItem))
-                yield break;
-
-            yield break;
-        }
-
-        if (!PassesAutoSellFilter(forgedItem))
-        {
-            if (inventoryManager != null && !inventoryManager.TryAddItem(forgedItem))
-                yield break;
-
-            yield break;
-        }
-
-        if (inventoryManager == null)
-        {
-            SellForgedItem(forgedItem);
-            yield break;
-        }
-
-        if (inventoryManager.UsedSlotCount == 0)
-        {
-            if (inventoryManager.TryAddItem(forgedItem))
-                ShowItemAddedFeedback(forgedItem);
-            yield break;
-        }
-
-        ItemData referenceItem = inventoryManager.GetBestReferenceItem();
-        if (referenceItem == null)
-        {
-            if (inventoryManager.TryAddItem(forgedItem))
-                ShowItemAddedFeedback(forgedItem);
-            yield break;
-        }
-
-        bool inventoryFull = inventoryManager.IsFull;
-
-        if (ItemComparer.IsStrictlyWorse(forgedItem, referenceItem))
-        {
-            SellForgedItem(forgedItem);
-            yield break;
-        }
-
-        if (ItemComparer.HasAnyStatHigher(forgedItem, referenceItem))
-        {
-            yield return PromptKeepOrSell(forgedItem, referenceItem, inventoryFull);
-            yield break;
-        }
-
-        // Esit veya farkli tipte item: bos slot varsa envantere al.
-        if (!inventoryFull && inventoryManager.TryAddItem(forgedItem))
-        {
-            ShowItemAddedFeedback(forgedItem);
-            yield break;
-        }
-
-        if (inventoryFull && ItemComparer.AreAllStatsEqual(forgedItem, referenceItem))
-        {
-            yield return PromptKeepOrSell(forgedItem, referenceItem, inventoryFull);
-            yield break;
-        }
-
-        SellForgedItem(forgedItem);
+            AutoSellEnabled = autoSellEnabled,
+            PassesAutoSellFilter = PassesAutoSellFilter(forgedItem),
+            ContainsCategory = inventoryManager != null && inventoryManager.ContainsCategory(forgedItem.Category),
+            CategoryItem = inventoryManager != null
+                ? inventoryManager.GetItemInCategory(forgedItem.Category)
+                : null,
+            InventoryFull = inventoryManager != null && inventoryManager.IsFull,
+            UsedSlotCount = inventoryManager != null ? inventoryManager.UsedSlotCount : 0,
+            BestReference = inventoryManager != null ? inventoryManager.GetBestReferenceItem() : null
+        };
     }
 
     private IEnumerator PromptKeepOrSell(ItemData forgedItem, ItemData referenceItem, bool inventoryFull)
@@ -190,7 +153,7 @@ public class ForgeAutomationManager : MonoBehaviour
         if (keepNewItem)
             TryKeepForgedItem(forgedItem);
         else
-            SellForgedItem(forgedItem);
+            SellForgedItem(forgedItem, isAutoSellAutomation: false);
     }
 
     /// <summary>Forge sonrasi gosterilecek kisa mesaji alir ve temizler.</summary>
@@ -207,11 +170,16 @@ public class ForgeAutomationManager : MonoBehaviour
             pendingForgeFeedback = message;
     }
 
-    private void SellForgedItem(ItemData item)
+    private void SellForgedItem(ItemData item, bool isAutoSellAutomation)
     {
         double sellGold = TrySellItem(item);
-        if (sellGold > 0)
-            QueueForgeFeedback(GameTexts.AutoSoldFeedback(sellGold));
+        if (sellGold <= 0) return;
+
+        string feedback = isAutoSellAutomation
+            ? GameTexts.AutoSoldFeedback(sellGold)
+            : GameTexts.ForgedItemSoldFeedback(sellGold);
+
+        QueueForgeFeedback(feedback);
     }
 
     private void ShowItemAddedFeedback(ItemData item)
@@ -267,6 +235,9 @@ public class ForgeAutomationManager : MonoBehaviour
         if (autoForgeEnabled == enabled) return;
 
         autoForgeEnabled = enabled;
+        if (!enabled)
+            pauseAutoForgeChain = false;
+
         NotifySettingsChanged();
 
         if (autoForgeEnabled && !isWaitingForUserDecision)
@@ -281,6 +252,7 @@ public class ForgeAutomationManager : MonoBehaviour
         if (autoSellEnabled == enabled) return;
 
         autoSellEnabled = enabled;
+        pauseAutoForgeChain = false;
         NotifySettingsChanged();
 
         if (autoForgeEnabled && !isWaitingForUserDecision)
@@ -378,10 +350,11 @@ public class ForgeAutomationManager : MonoBehaviour
         NotifySettingsChanged();
     }
 
-    /// <summary>Forge sirasinda envanter dolu olsa bile satisa izin var mi.</summary>
+    /// <summary>Forge sirasinda envanter dolu olsa bile forge baslatilabilir mi.</summary>
     public bool CanBypassInventoryForForge()
     {
-        return autoSellEnabled;
+        // Kategori basina tek slot: forge cekic ile baslar; sonuc satis/degisim forge sonunda cozulur.
+        return true;
     }
 
     /// <summary>Item auto-sell filtresinden gecer mi.</summary>

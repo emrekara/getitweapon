@@ -18,6 +18,7 @@ public enum LocalizationKey
     AutoSellEraFilterOff,
     FilterRangePosition,
     AutoSoldFeedback,
+    ForgedItemSoldFeedback,
     ItemAddedToInventory,
 
     InventoryFull,
@@ -80,5 +81,11 @@ public enum LocalizationKey
     TechNodeMaxLevel,
     TechNodeLocked,
 
-    ForgingPercent
+    ForgingPercent,
+
+    MinigameScore,
+    MinigamePlayButton,
+    MinigameWaitForge,
+    MinigameResult,
+    MinigameAlreadyPlayed
 }

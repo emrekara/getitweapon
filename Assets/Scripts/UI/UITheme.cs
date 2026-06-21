@@ -21,6 +21,7 @@ public static class UITheme
     public static readonly Color MutedText = new Color(0.65f, 0.7f, 0.78f, 1f);
     public static readonly Color ToggleOn = new Color(0.25f, 0.72f, 0.45f, 1f);
     public static readonly Color ToggleOff = new Color(0.22f, 0.25f, 0.32f, 1f);
+    public static readonly Color MinigameButton = new Color(0.55f, 0.28f, 0.72f, 1f);
 
     public const int SlotCount = 8;
     public const int SlotColumns = 4;

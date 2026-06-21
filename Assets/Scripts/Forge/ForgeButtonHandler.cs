@@ -13,8 +13,12 @@ public class ForgeButtonHandler : MonoBehaviour
     [SerializeField] private InventoryManager inventoryManager;
     [SerializeField] private ForgeAutomationManager automationManager;
     [SerializeField] private HammerManager hammerManager;
+    [SerializeField] private MinigameManager minigameManager;
 
     private bool isForging;
+
+    /// <summary>Forge basladi/bittiiginde UI guncellemesi icin.</summary>
+    public event System.Action OnForgeStateChanged;
     private Coroutine blockedMessageCoroutine;
     private TextMeshProUGUI forgeButtonLabel;
     private Image forgeButtonImage;
@@ -76,6 +80,8 @@ public class ForgeButtonHandler : MonoBehaviour
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnForgeClicked()
     {
+        EnsureAutomationManager();
+        automationManager?.ClearAutoForgeChainPause();
         TryStartForge();
     }
 
@@ -93,7 +99,6 @@ public class ForgeButtonHandler : MonoBehaviour
 
         if (!CanStartForge())
         {
-            ShowStatusMessage(GameTexts.InventoryFull);
             return false;
         }
 
@@ -169,14 +174,12 @@ public class ForgeButtonHandler : MonoBehaviour
     private IEnumerator ForgeRoutine()
     {
         CancelStatusMessage();
-        isForging = true;
-        RefreshForgeButtonState();
+        BeginForging();
 
         EnsureHammerManager();
         if (hammerManager != null && !hammerManager.TrySpendForForge())
         {
-            isForging = false;
-            RefreshForgeButtonState();
+            EndForging();
             ShowStatusMessage(GameTexts.NeedHammer(
                 hammerManager.CurrentHammers,
                 hammerManager.MaxHammers));
@@ -210,9 +213,8 @@ public class ForgeButtonHandler : MonoBehaviour
         ItemData forgedItem = itemDatabase.GetRandomItemForEra(GetCurrentEra());
         if (forgedItem == null)
         {
-            isForging = false;
+            EndForging();
             SetForgeVisualProgress(0f, false);
-            RefreshForgeButtonState();
             yield break;
         }
 
@@ -225,9 +227,8 @@ public class ForgeButtonHandler : MonoBehaviour
 
         saveManager?.SaveGame();
 
-        isForging = false;
+        EndForging();
         SetForgeVisualProgress(0f, false);
-        RefreshForgeButtonState();
 
         if (automationManager != null)
         {
@@ -259,16 +260,15 @@ public class ForgeButtonHandler : MonoBehaviour
                 : defaultForgeButtonLabel;
     }
 
-    /// <summary>Forge baslatilabilir mi (envanter veya auto-sell durumuna gore).</summary>
+    /// <summary>Forge baslatilabilir mi (cekic ve popup bekleme durumuna gore).</summary>
     private bool CanStartForge()
     {
         EnsureAutomationManager();
-        EnsureInventoryManager();
 
-        if (automationManager != null && automationManager.CanBypassInventoryForForge())
-            return true;
+        if (automationManager != null && automationManager.IsWaitingForUserDecision)
+            return false;
 
-        return inventoryManager == null || inventoryManager.HasFreeSlot;
+        return true;
     }
 
     /// <summary>Forge butonunun etkilesim durumunu forge ve envanter kapasitesine gore gunceller.</summary>
@@ -343,13 +343,46 @@ public class ForgeButtonHandler : MonoBehaviour
             hammerManager = FindFirstObjectByType<HammerManager>();
     }
 
+    private void EnsureMinigameManager()
+    {
+        if (minigameManager == null)
+            minigameManager = FindFirstObjectByType<MinigameManager>();
+    }
+
+    private void BeginForging()
+    {
+        isForging = true;
+        EnsureMinigameManager();
+        minigameManager?.NotifyForgeStarted();
+        RefreshForgeButtonState();
+        OnForgeStateChanged?.Invoke();
+    }
+
+    private void EndForging()
+    {
+        isForging = false;
+        EnsureMinigameManager();
+        minigameManager?.NotifyForgeEnded();
+        RefreshForgeButtonState();
+        OnForgeStateChanged?.Invoke();
+    }
+
     private IEnumerator AddItemWithoutAutomation(ItemData forgedItem)
     {
-        if (inventoryManager == null) yield break;
+        if (inventoryManager == null || forgedItem == null) yield break;
 
         if (inventoryManager.ContainsCategory(forgedItem.Category))
-            ShowStatusMessage(GameTexts.ItemCategoryAlreadyInInventory(forgedItem.Category));
-        else if (!inventoryManager.TryAddItem(forgedItem))
+        {
+            ItemData categoryItem = inventoryManager.GetItemInCategory(forgedItem.Category);
+            if (categoryItem != null &&
+                (ItemComparer.IsStrictlyWorse(forgedItem, categoryItem) ||
+                 ItemComparer.AreAllStatsEqual(forgedItem, categoryItem)))
+            {
+                yield break;
+            }
+        }
+
+        if (!inventoryManager.TryAddItem(forgedItem))
             ShowStatusMessage(GameTexts.InventoryFull);
 
         yield break;

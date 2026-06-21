@@ -8,8 +8,10 @@ public class SaveManager : MonoBehaviour
     private const string SaveKey = "GetItWeapon_Save";
 
     [SerializeField] private HammerSettings hammerSettings;
+    [SerializeField] private MinigameSettings minigameSettings;
     [SerializeField] private EconomyManager economyManager;
     [SerializeField] private HammerManager hammerManager;
+    [SerializeField] private MinigameManager minigameManager;
     [SerializeField] private ForgeButtonHandler forgeButtonHandler;
     [SerializeField] private GoldDisplayUI goldDisplayUI;
     [SerializeField] private HammerDisplayUI hammerDisplayUI;
@@ -82,7 +84,8 @@ public class SaveManager : MonoBehaviour
             languageCode = LocalizationManager.CurrentLanguage,
             techNodeLevels = techTreeManager != null ? techTreeManager.ExportState() : Array.Empty<TechNodeSaveEntry>(),
             techResearchNodeId = techTreeManager != null ? techTreeManager.ExportResearchNodeId() : string.Empty,
-            techResearchEndsAt = techTreeManager != null ? techTreeManager.ExportResearchEndsAt() : 0
+            techResearchEndsAt = techTreeManager != null ? techTreeManager.ExportResearchEndsAt() : 0,
+            minigameTotalScore = minigameManager != null ? minigameManager.ExportScore() : 0
         };
 
         if (hammerManager != null)
@@ -155,6 +158,9 @@ public class SaveManager : MonoBehaviour
                 data.techResearchEndsAt);
         }
 
+        if (minigameManager != null)
+            minigameManager.LoadState(data.minigameTotalScore);
+
         if (goldDisplayUI != null)
             goldDisplayUI.RefreshDisplay();
 
@@ -179,6 +185,17 @@ public class SaveManager : MonoBehaviour
             hammerSettings = Resources.Load<HammerSettings>("MainHammerSettings");
 
         hammerManager.Configure(hammerSettings);
+
+        if (minigameManager == null)
+            minigameManager = FindFirstObjectByType<MinigameManager>();
+
+        if (minigameManager == null)
+            minigameManager = gameObject.AddComponent<MinigameManager>();
+
+        if (minigameSettings == null)
+            minigameSettings = Resources.Load<MinigameSettings>("MainMinigameSettings");
+
+        minigameManager.Configure(minigameSettings, this);
 
         if (inventoryManager == null)
             inventoryManager = FindFirstObjectByType<InventoryManager>();

@@ -81,6 +81,10 @@ public static class GameTexts
     public static string AutoSoldFeedback(double gold) =>
         LocalizationManager.Format(LocalizationKey.AutoSoldFeedback, gold);
 
+    /// <summary>OTO SAT kapaliyken forge sonucu satis geri bildirimi.</summary>
+    public static string ForgedItemSoldFeedback(double gold) =>
+        LocalizationManager.Format(LocalizationKey.ForgedItemSoldFeedback, gold);
+
     /// <summary>Envantere ekleme geri bildirimi.</summary>
     public static string ItemAddedToInventory(string itemName) =>
         LocalizationManager.Format(LocalizationKey.ItemAddedToInventory, itemName);
@@ -206,4 +210,19 @@ public static class GameTexts
     /// <summary>Devam eden arastirma geri sayimi.</summary>
     public static string TechNodeResearching(string duration) =>
         LocalizationManager.Format(LocalizationKey.TechNodeResearching, duration);
+
+    /// <summary>Mini oyun toplam puani.</summary>
+    public static string MinigameScore(int score) =>
+        LocalizationManager.Format(LocalizationKey.MinigameScore, score);
+
+    public static string MinigamePlayButton => LocalizationManager.Get(LocalizationKey.MinigamePlayButton);
+
+    public static string MinigameWaitForge => LocalizationManager.Get(LocalizationKey.MinigameWaitForge);
+
+    /// <summary>Mini oyun tur sonucu.</summary>
+    public static string MinigameResult(int points) =>
+        LocalizationManager.Format(LocalizationKey.MinigameResult, points);
+
+    public static string MinigameAlreadyPlayed =>
+        LocalizationManager.Get(LocalizationKey.MinigameAlreadyPlayed);
 }
