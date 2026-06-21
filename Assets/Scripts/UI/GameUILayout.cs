@@ -107,14 +107,16 @@ public class GameUILayout : MonoBehaviour
 
         TextMeshProUGUI goldText = EnsureHeaderLabel(headerRect, "GoldText", new Vector2(0.02f, 0.5f),
             TextAlignmentOptions.MidlineLeft, isGold: true);
+        TextMeshProUGUI hammerText = EnsureHeaderLabel(headerRect, "HammerText", new Vector2(0.5f, 0.5f),
+            TextAlignmentOptions.Midline, isGold: false, isHammer: true);
         TextMeshProUGUI anvilInfoText = EnsureHeaderLabel(headerRect, "AnvilInfoText", new Vector2(0.98f, 0.5f),
             TextAlignmentOptions.MidlineRight, isGold: false);
 
-        EnsureHudBindings(goldText, anvilInfoText);
+        EnsureHudBindings(goldText, hammerText, anvilInfoText);
     }
 
     private TextMeshProUGUI EnsureHeaderLabel(RectTransform headerRect, string objectName, Vector2 anchor,
-        TextAlignmentOptions alignment, bool isGold)
+        TextAlignmentOptions alignment, bool isGold, bool isHammer = false)
     {
         Transform existing = headerRect.Find(objectName);
         TextMeshProUGUI text;
@@ -132,11 +134,11 @@ public class GameUILayout : MonoBehaviour
                 text = existing.gameObject.AddComponent<TextMeshProUGUI>();
         }
 
-        ReparentToHeader(text, headerRect, anchor, alignment, isGold);
+        ReparentToHeader(text, headerRect, anchor, alignment, isGold, isHammer);
         return text;
     }
 
-    private void EnsureHudBindings(TextMeshProUGUI goldText, TextMeshProUGUI anvilInfoText)
+    private void EnsureHudBindings(TextMeshProUGUI goldText, TextMeshProUGUI hammerText, TextMeshProUGUI anvilInfoText)
     {
         if (!Application.isPlaying) return;
 
@@ -150,6 +152,16 @@ public class GameUILayout : MonoBehaviour
             goldDisplay.Configure(economy, goldText);
         }
 
+        HammerManager hammerManager = FindFirstObjectByType<HammerManager>();
+        if (hammerManager != null && hammerText != null)
+        {
+            HammerDisplayUI hammerDisplay = GetComponent<HammerDisplayUI>();
+            if (hammerDisplay == null)
+                hammerDisplay = gameObject.AddComponent<HammerDisplayUI>();
+
+            hammerDisplay.Configure(hammerManager, hammerText);
+        }
+
         if (anvilInfoText != null)
         {
             AnvilUpgradeHandler upgradeHandler = FindFirstObjectByType<AnvilUpgradeHandler>();
@@ -158,7 +170,7 @@ public class GameUILayout : MonoBehaviour
     }
 
     private void ReparentToHeader(TextMeshProUGUI text, RectTransform headerRect, Vector2 anchor,
-        TextAlignmentOptions alignment, bool isGold)
+        TextAlignmentOptions alignment, bool isGold, bool isHammer = false)
     {
         if (text == null || headerRect == null) return;
 
@@ -168,7 +180,7 @@ public class GameUILayout : MonoBehaviour
         rect.anchorMax = anchor;
         rect.pivot = new Vector2(anchor.x, 0.5f);
         rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(isGold ? 520f : 480f, 80f);
+        rect.sizeDelta = new Vector2(isGold ? 420f : isHammer ? 360f : 480f, 80f);
         text.alignment = alignment;
 
         if (isGold)
@@ -178,6 +190,14 @@ public class GameUILayout : MonoBehaviour
             text.fontStyle = FontStyles.Bold;
             text.outlineWidth = 0.22f;
             text.outlineColor = new Color(0f, 0f, 0f, 0.75f);
+        }
+        else if (isHammer)
+        {
+            text.color = UITheme.HammerText;
+            text.fontSize = 30f;
+            text.fontStyle = FontStyles.Bold;
+            text.outlineWidth = 0.2f;
+            text.outlineColor = new Color(0f, 0f, 0f, 0.7f);
         }
         else
         {

@@ -12,6 +12,7 @@ public class ForgeButtonHandler : MonoBehaviour
     [SerializeField] private AnvilManager anvilManager;
     [SerializeField] private InventoryManager inventoryManager;
     [SerializeField] private ForgeAutomationManager automationManager;
+    [SerializeField] private HammerManager hammerManager;
 
     private bool isForging;
     private Coroutine blockedMessageCoroutine;
@@ -96,6 +97,15 @@ public class ForgeButtonHandler : MonoBehaviour
             return false;
         }
 
+        EnsureHammerManager();
+        if (hammerManager != null && !hammerManager.HasEnoughForForge)
+        {
+            ShowStatusMessage(GameTexts.NeedHammer(
+                hammerManager.CurrentHammers,
+                hammerManager.MaxHammers));
+            return false;
+        }
+
         if (itemDatabase.GetItemsForEra(GetCurrentEra()).Length == 0) return false;
 
         StartCoroutine(ForgeRoutine());
@@ -126,12 +136,24 @@ public class ForgeButtonHandler : MonoBehaviour
 
         if (inventoryManager != null)
             inventoryManager.OnInventoryChanged += HandleInventoryChanged;
+
+        EnsureHammerManager();
+        if (hammerManager != null)
+            hammerManager.OnHammersChanged += HandleHammersChanged;
     }
 
     private void OnDestroy()
     {
         if (inventoryManager != null)
             inventoryManager.OnInventoryChanged -= HandleInventoryChanged;
+
+        if (hammerManager != null)
+            hammerManager.OnHammersChanged -= HandleHammersChanged;
+    }
+
+    private void HandleHammersChanged()
+    {
+        RefreshForgeButtonState();
     }
 
     private void HandleInventoryChanged()
@@ -149,6 +171,17 @@ public class ForgeButtonHandler : MonoBehaviour
         CancelStatusMessage();
         isForging = true;
         RefreshForgeButtonState();
+
+        EnsureHammerManager();
+        if (hammerManager != null && !hammerManager.TrySpendForForge())
+        {
+            isForging = false;
+            RefreshForgeButtonState();
+            ShowStatusMessage(GameTexts.NeedHammer(
+                hammerManager.CurrentHammers,
+                hammerManager.MaxHammers));
+            yield break;
+        }
 
         float duration = anvilManager != null ? anvilManager.GetForgeDuration() : 3f;
         float elapsed = 0f;
@@ -242,7 +275,10 @@ public class ForgeButtonHandler : MonoBehaviour
     private void RefreshForgeButtonState()
     {
         if (forgeButton == null) return;
-        forgeButton.interactable = !isForging && CanStartForge();
+
+        EnsureHammerManager();
+        bool hasHammers = hammerManager == null || hammerManager.HasEnoughForForge;
+        forgeButton.interactable = !isForging && CanStartForge() && hasHammers;
     }
 
     private void ShowStatusMessage(string message)
@@ -299,6 +335,12 @@ public class ForgeButtonHandler : MonoBehaviour
     {
         if (automationManager == null)
             automationManager = FindFirstObjectByType<ForgeAutomationManager>();
+    }
+
+    private void EnsureHammerManager()
+    {
+        if (hammerManager == null)
+            hammerManager = FindFirstObjectByType<HammerManager>();
     }
 
     private IEnumerator AddItemWithoutAutomation(ItemData forgedItem)

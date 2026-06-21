@@ -8,6 +8,7 @@ public static class UITheme
     public static readonly Color PanelBorder = new Color(0.28f, 0.32f, 0.4f, 1f);
     public static readonly Color Header = new Color(0.1f, 0.12f, 0.17f, 1f);
     public static readonly Color GoldText = new Color(1f, 0.84f, 0.31f, 1f);
+    public static readonly Color HammerText = new Color(0.95f, 0.72f, 0.45f, 1f);
     public static readonly Color ForgeButton = new Color(0.85f, 0.45f, 0.12f, 1f);
     public static readonly Color ForgeProgressFill = new Color(1f, 0.92f, 0.35f, 1f);
     public static readonly Color ForgeButtonForging = new Color(0.55f, 0.3f, 0.08f, 1f);

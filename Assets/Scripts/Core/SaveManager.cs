@@ -7,9 +7,12 @@ public class SaveManager : MonoBehaviour
 {
     private const string SaveKey = "GetItWeapon_Save";
 
+    [SerializeField] private HammerSettings hammerSettings;
     [SerializeField] private EconomyManager economyManager;
+    [SerializeField] private HammerManager hammerManager;
     [SerializeField] private ForgeButtonHandler forgeButtonHandler;
     [SerializeField] private GoldDisplayUI goldDisplayUI;
+    [SerializeField] private HammerDisplayUI hammerDisplayUI;
     [SerializeField] private AnvilManager anvilManager;
     [SerializeField] private InventoryManager inventoryManager;
     [SerializeField] private ItemDatabase itemDatabase;
@@ -61,6 +64,9 @@ public class SaveManager : MonoBehaviour
         GameSaveData data = new GameSaveData
         {
             gold = economyManager.CurrentGold,
+            hammers = hammerManager != null ? hammerManager.CurrentHammers : 0,
+            hammerNextRegenAt = 0,
+            hammerLastDailyRefillDate = string.Empty,
             lastItemIndex = -1,
             anvilLevel = anvilManager != null ? anvilManager.AnvilLevel : 1,
             anvilUpgradeEndsAt = anvilManager != null ? anvilManager.UpgradeEndsAtUtc : 0,
@@ -79,6 +85,11 @@ public class SaveManager : MonoBehaviour
             techResearchEndsAt = techTreeManager != null ? techTreeManager.ExportResearchEndsAt() : 0
         };
 
+        if (hammerManager != null)
+        {
+            hammerManager.ExportState(out data.hammers, out data.hammerNextRegenAt, out data.hammerLastDailyRefillDate);
+        }
+
         string json = JsonUtility.ToJson(data);
         PlayerPrefs.SetString(SaveKey, json);
         PlayerPrefs.Save();
@@ -96,6 +107,23 @@ public class SaveManager : MonoBehaviour
 
         LocalizationManager.Initialize(data.languageCode);
         economyManager.SetGold(data.gold);
+
+        if (hammerManager != null)
+        {
+            bool hasHammerSaveData = data.hammers > 0 ||
+                                     data.hammerNextRegenAt > 0 ||
+                                     !string.IsNullOrEmpty(data.hammerLastDailyRefillDate);
+
+            if (hasHammerSaveData)
+            {
+                hammerManager.LoadState(
+                    data.hammers,
+                    data.hammerNextRegenAt,
+                    data.hammerLastDailyRefillDate);
+            }
+
+            hammerManager.ProcessOfflineTime(data.lastQuitTimestamp);
+        }
 
         if (inventoryManager != null)
         {
@@ -129,10 +157,29 @@ public class SaveManager : MonoBehaviour
 
         if (goldDisplayUI != null)
             goldDisplayUI.RefreshDisplay();
+
+        if (hammerDisplayUI == null)
+            hammerDisplayUI = FindFirstObjectByType<HammerDisplayUI>();
+
+        if (hammerDisplayUI != null)
+            hammerDisplayUI.RefreshDisplay();
     }
 
     private void EnsureSystems()
     {
+        if (hammerManager == null)
+            hammerManager = FindFirstObjectByType<HammerManager>();
+
+        if (hammerManager == null && economyManager != null)
+            hammerManager = economyManager.gameObject.AddComponent<HammerManager>();
+        else if (hammerManager == null)
+            hammerManager = gameObject.AddComponent<HammerManager>();
+
+        if (hammerSettings == null)
+            hammerSettings = Resources.Load<HammerSettings>("MainHammerSettings");
+
+        hammerManager.Configure(hammerSettings);
+
         if (inventoryManager == null)
             inventoryManager = FindFirstObjectByType<InventoryManager>();
 

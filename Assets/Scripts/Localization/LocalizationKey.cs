@@ -41,6 +41,9 @@ public enum LocalizationKey
     UpgradingButton,
 
     GoldAmount,
+    HammerAmount,
+    HammerAmountWithRegen,
+    NeedHammer,
     InventoryCount,
     Forging,
     ItemDetail,

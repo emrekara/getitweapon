@@ -89,6 +89,23 @@ public static class GameTexts
     public static string GoldAmount(double gold) =>
         LocalizationManager.Format(LocalizationKey.GoldAmount, gold);
 
+    /// <summary>Cekic miktarini formatlar; yenilenme varsa geri sayim ekler.</summary>
+    public static string HammerAmount(int current, int max, float regenSeconds)
+    {
+        if (regenSeconds > 0f)
+            return LocalizationManager.Format(
+                LocalizationKey.HammerAmountWithRegen,
+                current,
+                max,
+                FormatDuration(regenSeconds));
+
+        return LocalizationManager.Format(LocalizationKey.HammerAmount, current, max);
+    }
+
+    /// <summary>Yetersiz cekic uyarisi.</summary>
+    public static string NeedHammer(int current, int max) =>
+        LocalizationManager.Format(LocalizationKey.NeedHammer, current, max);
+
     /// <summary>Envanter doluluk sayacini formatlar.</summary>
     public static string InventoryCount(int used, int total) =>
         LocalizationManager.Format(LocalizationKey.InventoryCount, used, total);

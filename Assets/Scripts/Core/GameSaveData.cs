@@ -8,6 +8,12 @@ using UnityEngine;
 public class GameSaveData
 {
     public double gold;
+
+    // Cekic (hammer) meta parasi
+    public int hammers;
+    public double hammerNextRegenAt;
+    public string hammerLastDailyRefillDate = string.Empty;
+
     public int lastItemIndex = -1;
     public int anvilLevel = 1;
 

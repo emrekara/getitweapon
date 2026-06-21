@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 17 — Tech araştırma timer ✅ (Aşama 18 öncesi UI + envanter düzeltmeleri) |
-| **Son çalışan özellik** | Envanter kategori tekilliği (silah/kıyafet/küpe/kolye); SAT düzeltmesi; araştırma paneli KAPAT |
+| **Aşama** | 18 — Hammers meta para ✅ |
+| **Son çalışan özellik** | Çekiç ekonomisi; forge maliyeti; 45 sn yenilenme; API-ready config katmanı |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Aşama 18 — Hammers meta para |
-| **Henüz yok** | Hammers, minigame, tech dallanma, remote config |
+| **Sonraki hedef** | Aşama 19 — Minigame puanı (spec sırası) |
+| **Henüz yok** | Minigame, tech dallanma, remote config API bağlantısı |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -20,6 +20,27 @@
 EconomyManager (sahne objesi)
   ├── CurrentGold, AddGold(), TrySpendGold()
   └── Inspector: startingGold
+
+HammerManager (EconomyManager uzerinde, runtime)
+  ├── Forge basina cekic harcar (TrySpendForForge)
+  ├── Pasif yenilenme + UTC gunluk doldurma + offline regen
+  ├── Ayarlar: HammerConfigProvider.Active (SO veya API)
+  └── OnHammersChanged → HammerDisplayUI, ForgeButtonHandler
+
+HammerConfigProvider (static)
+  ├── Initialize(HammerSettings) — oyun basi
+  ├── ApplyRemoteConfig(HammerSettingsData) — ileride API cevabi
+  └── OnConfigChanged — max/maliyet/sure degisince UI gunceller
+
+HammerSettingsData (serializable DTO)
+  └── JSON/API semasi; build'e gomulmez (spec §8.5)
+
+HammerSettings (ScriptableObject)
+  └── MainHammerSettings.asset — yerel varsayilan (Inspector'dan ayarlanir)
+
+HammerDisplayUI (Canvas, runtime)
+  ├── Header ortasi HammerText: "Cekic 5/10 (+0:45)"
+  └── HammerConfigProvider + HammerManager event dinler
 
 GameTexts (LocalizationManager facade)
   ├── LocalizationKey enum + TR/EN tablolar
@@ -63,6 +84,7 @@ ItemCategory (enum)
 ForgeButtonHandler (ForgeButton üzerinde)
   ├── itemDatabase.GetRandomItemForEra(CurrentEra), anvilManager, inventoryManager
   ├── ForgeAutomationManager.ProcessForgedItem() coroutine
+  ├── Cekic kontrolu: yetersizse buton pasif + "Cekic yok!" mesaji
   ├── Buton uzerinde % ilerleme + sari fill (ForgeTimerText kaldirildi)
   ├── Durum mesajlari (envanter dolu vb.) forge buton etiketinde
   └── Coroutine ile forge + SaveGame
@@ -115,11 +137,13 @@ AnvilUpgradeHandler (UpgradeButton üzerinde)
   ├── Upgrade geri sayım UI, offline/load sonrası tamamlama
   └── OnUpgradeClicked, yetersiz gold → "Gerekli: Xg"
 
-SaveManager → GameSaveData: gold, inventoryItemIndices[], selectedInventorySlot,
-  anvilLevel, anvilUpgradeEndsAt, lastQuitTimestamp, autoForgeEnabled, autoSellEnabled,
-  autoSellTierFilterEnabled, autoSellMaxTier, autoSellEraFilterEnabled, autoSellMaxEraIndex,
-  languageCode, techNodeLevels[], techResearchNodeId, techResearchEndsAt
+SaveManager → GameSaveData: gold, hammers, hammerNextRegenAt, hammerLastDailyRefillDate,
+  inventoryItemIndices[], selectedInventorySlot, anvilLevel, anvilUpgradeEndsAt, lastQuitTimestamp,
+  autoForgeEnabled, autoSellEnabled, autoSellTierFilterEnabled, autoSellMaxTier,
+  autoSellEraFilterEnabled, autoSellMaxEraIndex, languageCode, techNodeLevels[],
+  techResearchNodeId, techResearchEndsAt
   └── legacy lastItemIndex → envanter slot 0'a migrate
+  └── legacy kayit (hammers alani yok): baslangic cekic degeri korunur
 
 OfflineProgressManager (sahne objesi)
   ├── anvilManager.GetOfflineGoldPerSecond(), maxOfflineSeconds (28800 = 8 saat)
@@ -127,7 +151,7 @@ OfflineProgressManager (sahne objesi)
   ├── Load sonrası offline gold + OfflineMessageText (Turkce)
   └── SaveGame() ile çift ödeme engeli
 
-Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug (gold, kayıt, dil, missing script tarama)
+Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug (gold, cekic, cekic config test, kayit, dil)
 Assets/Editor/SceneBootstrap.cs → GetItWeapon/Setup Main UI
 Assets/Editor/TechTreeBootstrap.cs → GetItWeapon/Setup Tech Tree
 
@@ -144,16 +168,19 @@ Assets/Art/Icons/
 Assets/Scripts/
 ├── Core/ (GameSaveData, SaveManager)
 ├── Localization/ (LocalizationKey, LocalizationManager, TR/EN tablolar)
-├── Economy/EconomyManager.cs
+├── Economy/ (EconomyManager, HammerManager, HammerSettings, HammerSettingsData, HammerConfigProvider)
 ├── Forge/ (ForgeButtonHandler, SellButtonHandler, ForgeAutomationManager, AutoSellFilter,
 │          ItemComparer, ItemCategory, ItemData, ItemDatabase, AnvilManager, AnvilUpgradeSettings)
 ├── Tech/ (TechEffectType, TechNodeData, TechTreeDatabase, TechTreeManager)
 ├── Idle/OfflineProgressManager.cs
 ├── Inventory/InventoryManager.cs
-└── UI/ (GameTexts, GoldDisplayUI, AnvilUpgradeHandler, InventoryPanelUI, InventorySlotUI,
+└── UI/ (GameTexts, GoldDisplayUI, HammerDisplayUI, AnvilUpgradeHandler, InventoryPanelUI, InventorySlotUI,
          AutoForgePanelUI, ForgeItemPromptUI, TechTreePanelUI, GameUILayout, GameUiBootstrap, UITheme)
 
 Assets/Editor/DebugSaveMenu.cs, SceneBootstrap.cs, TechTreeBootstrap.cs
+
+Assets/ScriptableObjects/Hammer/
+  └── MainHammerSettings.asset — cekic ekonomisi varsayilanlari (regen, max, maliyet)
 ```
 
 ### UI Hierarchy (SampleScene)
@@ -163,6 +190,7 @@ Canvas (+ GameUiBootstrap, GameUILayout, InventoryPanelUI — runtime)
 ├── Background (koyu tema)
 ├── HeaderPanel
 │   ├── GoldText
+│   ├── HammerText
 │   └── AnvilInfoText
 ├── ForgeButton (+ ForgeButtonHandler, % ilerleme fill)
 ├── AutoForgePanel (runtime: OTO DÖV / OTO SAT / tier-çağ filtre ‹ ›)
@@ -174,7 +202,7 @@ Canvas (+ GameUiBootstrap, GameUILayout, InventoryPanelUI — runtime)
 ├── OfflineMessageText
 └── ForgeItemPrompt (runtime popup)
 (ItemIcon, LastItemText — gizli/legacy)
-EconomyManager | SaveManager (+ InventoryManager, ForgeAutomationManager) | AnvilManager | OfflineProgressManager
+EconomyManager (+ HammerManager) | SaveManager (+ hammerSettings SO ref) | AnvilManager | OfflineProgressManager
 EventSystem
 ```
 
@@ -187,6 +215,70 @@ ForgeButton     → top 120, h 80  (% + fill)
 AutoForgePanel  → top 212, h 200
 Envanter        → topInset 424
 ```
+
+---
+
+## Çekiç (Hammer) Config Referansı
+
+> Aşama 18. Değerler build'e gömülmez; `MainHammerSettings` asset veya ileride API üzerinden gelir (`forge-master-spec.md` §8.5).
+
+### Varsayılan değerler (`MainHammerSettings.asset`)
+
+| Alan | Varsayılan | Açıklama |
+|------|------------|----------|
+| `startingHammers` | 5 | Yeni oyuncu / legacy migrate başlangıcı |
+| `maxHammers` | 10 | Kapasite üst sınırı |
+| `forgeHammerCost` | 1 | Her DÖV işlemi maliyeti |
+| `regenIntervalSeconds` | **45** | Kapasite dolu değilken 1 çekiç / N saniye (önce 300 sn idi) |
+| `dailyFullRefillEnabled` | true | UTC gün değişiminde max'a doldur |
+
+### Dosya zinciri
+
+```
+MainHammerSettings.asset (SO)
+  → SaveManager.hammerSettings (sahne referansi)
+  → HammerManager.Configure()
+  → HammerConfigProvider.Initialize()
+  → HammerManager / ForgeButtonHandler / HammerDisplayUI okur
+```
+
+### API / remote config entegrasyonu (planlanan)
+
+`HammerSettingsData` JSON şeması API ile birebir uyumlu:
+
+```json
+{
+  "startingHammers": 5,
+  "maxHammers": 10,
+  "forgeHammerCost": 1,
+  "regenIntervalSeconds": 45,
+  "dailyFullRefillEnabled": true
+}
+```
+
+Sunucu cevabı geldiğinde:
+
+```csharp
+HammerSettingsData remote = JsonUtility.FromJson<HammerSettingsData>(json);
+HammerConfigProvider.ApplyRemoteConfig(remote);
+```
+
+- `OnConfigChanged` tetiklenir → UI ve forge butonu güncellenir.
+- `maxHammers` düşerse mevcut çekiç `Clamp` edilir.
+- Aktif regen zamanı (`hammerNextRegenAt` save) değişmez; sadece sonraki tick'ten itibaren yeni süre geçerli.
+
+### Debug menüsü (test)
+
+| Menü | Ne yapar |
+|------|----------|
+| `Çekiç +5 Ekle` | Kayda +5 çekiç |
+| `Çekiç Doldur (Max)` | Max kapasiteye doldurur |
+| `Çekiç Config: Hizli Regen (30sn)` | `ApplyRemoteConfig` simülasyonu |
+
+### Unity Inspector
+
+1. **Project** → `Assets/ScriptableObjects/Hammer/MainHammerSettings` → süre/maliyet ayarla.
+2. **Hierarchy** → `SaveManager` → **Hammer Settings** alanı `MainHammerSettings`'e bağlı olmalı.
 
 ---
 
@@ -217,12 +309,54 @@ Envanter        → topInset 424
 | 15 | i18n iskelet (TR/EN) | ✅ | LocalizationManager, tablolar, dil kaydı |
 | 16 | Tech tree iskelet | ✅ | 3 düğüm, Anvil/Offline entegrasyonu, panel UI |
 | 17 | Tech araştırma timer | ✅ | Gold + süre, tek slot, save/load, offline tamamlama |
+| 18 | Hammers meta para | ✅ | Forge maliyeti, regen, günlük doldurma, API-ready config |
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-21] Aşama 18 — Hammers meta para + API-ready config
+
+**Aşama:** 18 — Hammers meta para
+
+**Ne yapıldı:**
+- **Çekiç ekonomisi:** Her forge 1 çekiç harcar; max 10, başlangıç 5.
+- **Yenilenme:** 45 sn'de 1 çekiç (önce 300 sn); kapasite dolunca durur.
+- **Günlük doldurma:** UTC gün değişiminde max'a çıkar (ilk gün sadece başlangıç değeri).
+- **Offline:** Çıkış süresine göre regen hesaplanır; save alanları: `hammers`, `hammerNextRegenAt`, `hammerLastDailyRefillDate`.
+- **UI:** Header ortasında `HammerText` — `Çekiç 5/10 (+0:45)` formatı, TR/EN.
+- **Forge:** Çekiç yokken buton pasif + `Çekiç yok! (0/10)`; OTO DÖV aynı kurala tabi.
+- **Config katmanı:** `HammerSettingsData` (DTO) + `HammerSettings` (SO) + `HammerConfigProvider` — ileride API `ApplyRemoteConfig` ile güncellenecek.
+- **Debug:** Çekiç ekle/doldur + hızlı regen config test menüsü.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Economy/HammerManager.cs`, `HammerSettings.cs`, `HammerSettingsData.cs`, `HammerConfigProvider.cs`
+- `Assets/Scripts/UI/HammerDisplayUI.cs`, `GameUILayout.cs`, `GameTexts.cs`, `UITheme.cs`
+- `Assets/Scripts/Core/GameSaveData.cs`, `SaveManager.cs`
+- `Assets/Scripts/Forge/ForgeButtonHandler.cs`
+- `Assets/Scripts/Localization/` (HammerAmount, NeedHammer anahtarları)
+- `Assets/ScriptableObjects/Hammer/MainHammerSettings.asset`
+- `Assets/Editor/DebugSaveMenu.cs`
+- `Assets/Scenes/SampleScene.unity` (SaveManager → hammerSettings)
+- `DEVLOG.md` (Çekiç Config Referansı bölümü)
+
+**Unity editöründe yapılanlar:**
+- `SaveManager` → Hammer Settings: `MainHammerSettings` bağlandı.
+- `HammerManager` Play'de `EconomyManager` üzerinde otomatik eklenir.
+
+**Test kriteri:**
+- Play → header'da `Çekiç 5/10` görünür.
+- 5 kez DÖV → çekiç 0, buton pasif, geri sayım başlar (~45 sn).
+- Debug → Çekiç Doldur → tekrar dövülebilir.
+- Debug → Çekiç Config: Hizli Regen (30sn) → geri sayım 30 sn'ye iner.
+
+**AI bağlam notları:**
+- Çekiç ayarları **asla** `HammerManager` içine hardcode etme; `HammerConfigProvider.Active` veya SO kullan.
+- API gelince: login/bootstrap sonrası `HammerConfigProvider.ApplyRemoteConfig(...)`; aynı DTO diğer remote config blob'larıyla birleştirilebilir.
+- Sıradaki spec sırası: **minigame puanı** → mobile UI pass.
+- Legacy save: hammer alanı yoksa `startingHammers` korunur (0'a sıfırlanmaz).
 
 ### [2026-06-21] Kategori tekilliği, SAT/araştırma UI ve OTO panel düzeltmeleri
 

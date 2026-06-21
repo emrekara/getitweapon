@@ -46,6 +46,9 @@ public static class TurkishLocalization
         { LocalizationKey.UpgradingButton, "YÜKSELTİLİYOR" },
 
         { LocalizationKey.GoldAmount, "{0:0} Altın" },
+        { LocalizationKey.HammerAmount, "Çekiç {0}/{1}" },
+        { LocalizationKey.HammerAmountWithRegen, "Çekiç {0}/{1} (+{2})" },
+        { LocalizationKey.NeedHammer, "Çekiç yok! ({0}/{1})" },
         { LocalizationKey.InventoryCount, "Envanter {0}/{1}" },
         { LocalizationKey.Forging, "Dövülüyor... {0}" },
         { LocalizationKey.ItemDetail, "{0}  ·  SAL {1:0}  ·  Satış {2:0}g" },

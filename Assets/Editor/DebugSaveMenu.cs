@@ -156,6 +156,27 @@ public static class DebugSaveMenu
         AddGold(100);
     }
 
+    [MenuItem("GetItWeapon/Debug/Cekic +5 Ekle")]
+    private static void AddHammers5()
+    {
+        AddHammers(5);
+    }
+
+    [MenuItem("GetItWeapon/Debug/Cekic Doldur (Max)")]
+    private static void FillHammers()
+    {
+        AddHammers(HammerConfigProvider.Active.maxHammers);
+    }
+
+    [MenuItem("GetItWeapon/Debug/Cekic Config: Hizli Regen (30sn)")]
+    private static void ApplyFastHammerRegenConfig()
+    {
+        HammerSettingsData remote = HammerConfigProvider.Active.Clone();
+        remote.regenIntervalSeconds = 30f;
+        HammerConfigProvider.ApplyRemoteConfig(remote);
+        Debug.Log("[Debug] Remote cekic config uygulandi: regen 30 sn.");
+    }
+
     [MenuItem("GetItWeapon/Debug/Gold Ekle (Input)...")]
     private static void OpenGoldInputWindow()
     {
@@ -192,6 +213,28 @@ public static class DebugSaveMenu
         Debug.Log($"[Debug] +{amount:0} gold eklendi. Toplam: {data.gold:0}");
     }
 
+    /// <summary>Kayittaki cekic sayisina miktar ekler; Play modundaysa ekrani da gunceller.</summary>
+    public static void AddHammers(int amount)
+    {
+        if (amount <= 0)
+        {
+            Debug.LogWarning("[Debug] Eklenecek cekic 0'dan buyuk olmali.");
+            return;
+        }
+
+        GameSaveData data = LoadOrCreate();
+        int max = HammerConfigProvider.Active.maxHammers;
+        data.hammers = Mathf.Min(max, data.hammers + amount);
+
+        if (data.hammers >= max)
+            data.hammerNextRegenAt = 0;
+
+        WriteSave(data);
+        ApplyHammersIfPlaying(data.hammers);
+
+        Debug.Log($"[Debug] +{amount} cekic eklendi. Toplam: {data.hammers}/{max}");
+    }
+
     private static void ApplyGoldIfPlaying(double totalGold)
     {
         if (!Application.isPlaying) return;
@@ -203,6 +246,19 @@ public static class DebugSaveMenu
         GoldDisplayUI goldUI = Object.FindFirstObjectByType<GoldDisplayUI>();
         if (goldUI != null)
             goldUI.RefreshDisplay();
+    }
+
+    private static void ApplyHammersIfPlaying(int totalHammers)
+    {
+        if (!Application.isPlaying) return;
+
+        HammerManager hammerManager = Object.FindFirstObjectByType<HammerManager>();
+        if (hammerManager != null)
+            hammerManager.SetHammers(totalHammers);
+
+        HammerDisplayUI hammerUI = Object.FindFirstObjectByType<HammerDisplayUI>();
+        if (hammerUI != null)
+            hammerUI.RefreshDisplay();
     }
 
     private static GameSaveData LoadOrCreate()

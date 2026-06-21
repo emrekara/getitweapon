@@ -46,6 +46,9 @@ public static class EnglishLocalization
         { LocalizationKey.UpgradingButton, "UPGRADING" },
 
         { LocalizationKey.GoldAmount, "{0:0} Gold" },
+        { LocalizationKey.HammerAmount, "Hammer {0}/{1}" },
+        { LocalizationKey.HammerAmountWithRegen, "Hammer {0}/{1} (+{2})" },
+        { LocalizationKey.NeedHammer, "No hammers! ({0}/{1})" },
         { LocalizationKey.InventoryCount, "Inventory {0}/{1}" },
         { LocalizationKey.Forging, "Forging... {0}" },
         { LocalizationKey.ItemDetail, "{0}  ·  ATK {1:0}  ·  Sell {2:0}g" },
