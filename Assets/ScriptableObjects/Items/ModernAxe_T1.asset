@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 255b08e988f3816419712b98c79e9ba5, type: 3}
   m_Name: ModernAxe_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemName: Modern Axe
+  itemName: Modern Balta
   icon: {fileID: 1000020002, guid: bbcc0022ddeeff001122334455667799, type: 3}
   baseAttack: 22
   baseDefense: 0

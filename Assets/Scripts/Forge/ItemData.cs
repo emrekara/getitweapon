@@ -4,7 +4,7 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "NewItem", menuName = "GetItWeapon/Item Data")]
 public class ItemData : ScriptableObject
 {
-    [SerializeField] private string itemName = "Stone Sword";
+    [SerializeField] private string itemName = "Taş Kılıç";
     [SerializeField] private Sprite icon;
     [SerializeField] private double baseAttack = 1;
     [SerializeField] private double baseDefense = 0;

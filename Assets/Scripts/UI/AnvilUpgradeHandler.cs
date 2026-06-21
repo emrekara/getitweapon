@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -48,7 +46,7 @@ public class AnvilUpgradeHandler : MonoBehaviour
             anvilManager.OnUpgradeTimerChanged -= HandleUpgradeTimerChanged;
     }
 
-    private IEnumerator RefreshAfterLoad()
+    private System.Collections.IEnumerator RefreshAfterLoad()
     {
         yield return null;
 
@@ -82,7 +80,7 @@ public class AnvilUpgradeHandler : MonoBehaviour
         if (economyManager.CurrentGold < cost)
         {
             if (upgradeButtonText != null)
-                upgradeButtonText.text = $"Need {cost:0}g";
+                upgradeButtonText.text = GameTexts.NeedGold(cost);
             return;
         }
 
@@ -106,7 +104,7 @@ public class AnvilUpgradeHandler : MonoBehaviour
         upgradeTimerCoroutine = StartCoroutine(UpgradeTimerRoutine());
     }
 
-    private IEnumerator UpgradeTimerRoutine()
+    private System.Collections.IEnumerator UpgradeTimerRoutine()
     {
         if (upgradeButton != null)
             upgradeButton.interactable = false;
@@ -140,10 +138,10 @@ public class AnvilUpgradeHandler : MonoBehaviour
 
         if (anvilInfoText != null)
         {
-            string info = $"Anvil Lv.{anvilManager.AnvilLevel} - {anvilManager.CurrentEra}";
+            string info = GameTexts.AnvilInfo(anvilManager.AnvilLevel, anvilManager.CurrentEra);
 
             if (anvilManager.IsUpgradeInProgress)
-                info += $"\nUpgrading... {FormatDuration(anvilManager.GetRemainingUpgradeSeconds())}";
+                info += $"\n{GameTexts.AnvilUpgrading(GameTexts.FormatDuration(anvilManager.GetRemainingUpgradeSeconds()))}";
 
             anvilInfoText.text = info;
         }
@@ -152,8 +150,8 @@ public class AnvilUpgradeHandler : MonoBehaviour
         {
             if (anvilManager.IsUpgradeInProgress)
             {
-                upgradeButtonText.text =
-                    $"UPGRADING {FormatDuration(anvilManager.GetRemainingUpgradeSeconds())}";
+                upgradeButtonText.text = GameTexts.UpgradeInProgressButton(
+                    GameTexts.FormatDuration(anvilManager.GetRemainingUpgradeSeconds()));
             }
             else
             {
@@ -161,28 +159,9 @@ public class AnvilUpgradeHandler : MonoBehaviour
                 float nextDuration = anvilManager.GetUpgradeDurationSeconds();
 
                 upgradeButtonText.text = nextDuration > 0f
-                    ? $"UPGRADE ({cost:0}g, {FormatDuration(nextDuration)})"
-                    : $"UPGRADE ({cost:0}g)";
+                    ? GameTexts.UpgradeButtonLabel(cost, GameTexts.FormatDuration(nextDuration))
+                    : GameTexts.UpgradeButtonLabel(cost);
             }
         }
-    }
-
-    /// <summary>Saniyeyi kisa okunabilir metne cevirir.</summary>
-    private static string FormatDuration(float totalSeconds)
-    {
-        int seconds = Mathf.Max(0, Mathf.CeilToInt(totalSeconds));
-
-        if (seconds < 60)
-            return $"{seconds}s";
-
-        int minutes = seconds / 60;
-        int remainingSeconds = seconds % 60;
-
-        if (minutes < 60)
-            return remainingSeconds > 0 ? $"{minutes}m {remainingSeconds}s" : $"{minutes}m";
-
-        int hours = minutes / 60;
-        int remainingMinutes = minutes % 60;
-        return remainingMinutes > 0 ? $"{hours}h {remainingMinutes}m" : $"{hours}h";
     }
 }

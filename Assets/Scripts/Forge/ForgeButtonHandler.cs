@@ -3,71 +3,53 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// FORGE butonuna basildiginda sure bekler, sonra rastgele item uretir.
+// FORGE butonuna basildiginda sure bekler, sonra rastgele item uretir ve envantere ekler.
 public class ForgeButtonHandler : MonoBehaviour
 {
-    [SerializeField] private TextMeshProUGUI lastItemText;
     [SerializeField] private TextMeshProUGUI forgeTimerText;
-    [SerializeField] private Image itemIcon;
     [SerializeField] private Button forgeButton;
     [SerializeField] private ItemDatabase itemDatabase;
     [SerializeField] private SaveManager saveManager;
     [SerializeField] private AnvilManager anvilManager;
+    [SerializeField] private InventoryManager inventoryManager;
+    [SerializeField] private ForgeAutomationManager automationManager;
 
-    private ItemData lastForgedItem;
     private bool isForging;
     private Coroutine blockedMessageCoroutine;
 
-    /// <summary>Son forge edilen item; sat butonu bunu kullanir.</summary>
-    public ItemData LastForgedItem => lastForgedItem;
+    /// <summary>Item havuzu referansi; baska sistemler icin paylasilir.</summary>
+    public ItemDatabase ItemDatabase => itemDatabase;
 
     /// <summary>Forge devam ediyor mu; satis bu surede engellenir.</summary>
     public bool IsForging => isForging;
 
-    /// <summary>Satilmamis item varsa true; yeni forge bu durumda engellenir.</summary>
-    public bool HasUnsoldItem => lastForgedItem != null;
-
-    /// <summary>Satistan sonra son item kaydini ve ekrani temizler.</summary>
-    public void ClearLastItem()
-    {
-        lastForgedItem = null;
-        ClearDisplay();
-        RefreshForgeButtonState();
-    }
-
-    /// <summary>Kayit icin son item'in listedeki indeksini dondurur (-1 = yok).</summary>
-    public int GetLastItemIndex()
-    {
-        if (lastForgedItem == null || itemDatabase == null) return -1;
-        return itemDatabase.IndexOf(lastForgedItem);
-    }
-
-    /// <summary>Kayittan son forge edilen item'i geri yukler.</summary>
-    public void RestoreLastItem(int index)
-    {
-        if (itemDatabase == null || index < 0 || index >= itemDatabase.Count)
-        {
-            ClearLastItem();
-            return;
-        }
-
-        lastForgedItem = itemDatabase.GetItem(index);
-        RefreshLastItemDisplay();
-        RefreshForgeButtonState();
-    }
-
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnForgeClicked()
     {
-        if (isForging || itemDatabase == null) return;
-        if (lastForgedItem != null)
+        TryStartForge();
+    }
+
+    /// <summary>Forge baslatmayi dener; auto-forge ve manuel forge bunu kullanir.</summary>
+    public bool TryStartForge()
+    {
+        if (isForging || itemDatabase == null) return false;
+
+        EnsureAutomationManager();
+        EnsureInventoryManager();
+
+        if (automationManager != null && automationManager.IsWaitingForUserDecision)
+            return false;
+
+        if (!CanStartForge())
         {
-            ShowBlockedMessage();
-            return;
+            ShowStatusMessage(GameTexts.InventoryFull);
+            return false;
         }
-        if (itemDatabase.GetItemsForEra(GetCurrentEra()).Length == 0) return;
+
+        if (itemDatabase.GetItemsForEra(GetCurrentEra()).Length == 0) return false;
 
         StartCoroutine(ForgeRoutine());
+        return true;
     }
 
     private void OnEnable()
@@ -82,10 +64,30 @@ public class ForgeButtonHandler : MonoBehaviour
             anvilManager.OnAnvilLevelChanged -= HandleAnvilLevelChanged;
     }
 
+    private void Start()
+    {
+        EnsureInventoryManager();
+        EnsureAutomationManager();
+        RefreshForgeButtonState();
+
+        if (inventoryManager != null)
+            inventoryManager.OnInventoryChanged += HandleInventoryChanged;
+    }
+
+    private void OnDestroy()
+    {
+        if (inventoryManager != null)
+            inventoryManager.OnInventoryChanged -= HandleInventoryChanged;
+    }
+
+    private void HandleInventoryChanged()
+    {
+        RefreshForgeButtonState();
+    }
+
     private void HandleAnvilLevelChanged()
     {
         if (isForging) return;
-        RefreshLastItemDisplay();
     }
 
     private IEnumerator ForgeRoutine()
@@ -93,21 +95,13 @@ public class ForgeButtonHandler : MonoBehaviour
         isForging = true;
         RefreshForgeButtonState();
 
-        HideItemDisplay();
-
         float duration = anvilManager != null ? anvilManager.GetForgeDuration() : 3f;
         float remaining = duration;
 
         while (remaining > 0f)
         {
             if (forgeTimerText != null)
-            {
-                // 1 saniyeden kisa surelerde ondalik goster (or. 0.5s)
-                string timeText = remaining < 1f
-                    ? $"{remaining:0.0}s"
-                    : $"{Mathf.CeilToInt(remaining)}s";
-                forgeTimerText.text = $"Forging... {timeText}";
-            }
+                forgeTimerText.text = GameTexts.Forging(GameTexts.FormatDuration(remaining));
 
             yield return null;
             remaining -= Time.deltaTime;
@@ -116,93 +110,60 @@ public class ForgeButtonHandler : MonoBehaviour
         if (forgeTimerText != null)
             forgeTimerText.text = string.Empty;
 
-        lastForgedItem = itemDatabase.GetRandomItemForEra(GetCurrentEra());
-        if (lastForgedItem == null)
+        ItemData forgedItem = itemDatabase.GetRandomItemForEra(GetCurrentEra());
+        if (forgedItem == null)
         {
             isForging = false;
             RefreshForgeButtonState();
             yield break;
         }
 
-        RefreshLastItemDisplay();
+        EnsureAutomationManager();
+        EnsureInventoryManager();
+
+        yield return automationManager != null
+            ? automationManager.ProcessForgedItem(forgedItem)
+            : AddItemWithoutAutomation(forgedItem);
+
         saveManager?.SaveGame();
 
         isForging = false;
         RefreshForgeButtonState();
+
+        automationManager?.NotifyForgeCompleted();
     }
 
-    /// <summary>Ekrandaki item metnini guncel anvil seviyesine gore yeniler.</summary>
-    public void RefreshLastItemDisplay()
+    /// <summary>Forge baslatilabilir mi (envanter veya auto-sell durumuna gore).</summary>
+    private bool CanStartForge()
     {
-        if (lastForgedItem == null) return;
+        EnsureAutomationManager();
+        EnsureInventoryManager();
 
-        if (lastItemText != null)
-        {
-            double sellPrice = anvilManager != null
-                ? anvilManager.GetScaledSellPrice(lastForgedItem.SellPrice)
-                : lastForgedItem.SellPrice;
+        if (automationManager != null && automationManager.CanBypassInventoryForForge())
+            return true;
 
-            lastItemText.text =
-                $"{lastForgedItem.ItemName} (ATK {lastForgedItem.BaseAttack:0}) - Sell: {sellPrice:0}g";
-        }
-
-        if (itemIcon != null)
-        {
-            Sprite icon = lastForgedItem.Icon;
-            itemIcon.sprite = icon;
-            itemIcon.enabled = icon != null;
-        }
+        return inventoryManager == null || inventoryManager.HasFreeSlot;
     }
 
-    private void HideItemDisplay()
-    {
-        if (lastItemText != null)
-            lastItemText.text = string.Empty;
-
-        if (itemIcon != null)
-        {
-            itemIcon.sprite = null;
-            itemIcon.enabled = false;
-        }
-    }
-
-    private string GetCurrentEra()
-    {
-        return anvilManager != null ? anvilManager.CurrentEra : "Stone";
-    }
-
-    private void ClearDisplay()
-    {
-        if (lastItemText != null)
-            lastItemText.text = "No item yet";
-
-        if (itemIcon != null)
-        {
-            itemIcon.sprite = null;
-            itemIcon.enabled = false;
-        }
-    }
-
-    /// <summary>Forge butonunun etkilesim durumunu satilmamis item ve forge durumuna gore gunceller.</summary>
+    /// <summary>Forge butonunun etkilesim durumunu forge ve envanter kapasitesine gore gunceller.</summary>
     private void RefreshForgeButtonState()
     {
         if (forgeButton == null) return;
-        forgeButton.interactable = !isForging && lastForgedItem == null;
+        forgeButton.interactable = !isForging && CanStartForge();
     }
 
-    /// <summary>Satilmamis item varken forge denemesinde kisa uyari gosterir.</summary>
-    private void ShowBlockedMessage()
+    private void ShowStatusMessage(string message)
     {
         if (blockedMessageCoroutine != null)
             StopCoroutine(blockedMessageCoroutine);
 
-        blockedMessageCoroutine = StartCoroutine(BlockedMessageRoutine());
+        blockedMessageCoroutine = StartCoroutine(StatusMessageRoutine(message));
     }
 
-    private IEnumerator BlockedMessageRoutine()
+    private IEnumerator StatusMessageRoutine(string message)
     {
         if (forgeTimerText != null)
-            forgeTimerText.text = "Sell item first!";
+            forgeTimerText.text = message;
 
         yield return new WaitForSeconds(2f);
 
@@ -210,5 +171,30 @@ public class ForgeButtonHandler : MonoBehaviour
             forgeTimerText.text = string.Empty;
 
         blockedMessageCoroutine = null;
+    }
+
+    private string GetCurrentEra()
+    {
+        return anvilManager != null ? anvilManager.CurrentEra : "Stone";
+    }
+
+    private void EnsureInventoryManager()
+    {
+        if (inventoryManager == null)
+            inventoryManager = FindFirstObjectByType<InventoryManager>();
+    }
+
+    private void EnsureAutomationManager()
+    {
+        if (automationManager == null)
+            automationManager = FindFirstObjectByType<ForgeAutomationManager>();
+    }
+
+    private IEnumerator AddItemWithoutAutomation(ItemData forgedItem)
+    {
+        if (inventoryManager == null || !inventoryManager.TryAddItem(forgedItem))
+            ShowStatusMessage(GameTexts.InventoryFull);
+
+        yield break;
     }
 }

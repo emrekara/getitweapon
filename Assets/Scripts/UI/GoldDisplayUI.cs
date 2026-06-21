@@ -17,6 +17,6 @@ public class GoldDisplayUI : MonoBehaviour
     {
         if (economyManager == null || goldText == null) return;
 
-        goldText.text = $"Gold: {economyManager.CurrentGold:0}";
+        goldText.text = GameTexts.GoldAmount(economyManager.CurrentGold);
     }
 }

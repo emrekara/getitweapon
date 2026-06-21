@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 255b08e988f3816419712b98c79e9ba5, type: 3}
   m_Name: MedievalBow_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemName: Medieval Bow
+  itemName: Orta Çağ Yayı
   icon: {fileID: 1000010003, guid: aabb0011ccddeeff11223344556677aa, type: 3}
   baseAttack: 10
   baseDefense: 0

@@ -1,0 +1,35 @@
+# Sprint Modu — Toplu Geliştirme
+
+Kullanıcı **"sprint"**, **"sprint başla"**, **"toplu"** veya benzeri ifade kullandığında bu kurallar `1_general.mdc` öğrenme kurallarının **üzerine** uygulanır.
+
+## Sprint modunda AI davranışı
+
+- Aynı milestone içindeki tüm dosyaları **tek oturumda** yaz (kod + sahne bağlantıları + DEVLOG).
+- Her mesajda tek adım ve onay bekleme **zorunluluğu kalkar**.
+- Unity adımlarını mesaj sonunda **tek test listesi** olarak ver; adım adım "tamam yaz" bekleme.
+- Tanıdık pattern'leri (yeni buton, save alanı, timer UI) tekrar sormadan uygula.
+- Öğrenme moduna dönüş: kullanıcı **"öğrenme modu"** veya **"adım adım"** derse `1_general.mdc` tekrar geçerli olur.
+
+## Milestone tanımı
+
+Her sprint paketi **oynanabilir** olmalı:
+1. Kod derlenir
+2. Play'de test listesi geçer
+3. DEVLOG güncellenir
+4. Kullanıcı commit/push isterse yapılır
+
+## Unity editör talimatı (sprint sonu formatı)
+
+```
+### Play öncesi
+- Unity aç, derleme bitsin
+- (Gerekirse) GetItWeapon → Setup Main UI
+
+### Play'de test et
+1. ...
+2. ...
+```
+
+## Kapsam
+
+Sprint modu hız için scope genişletir; backend/PvP/IAP yine yasak (`1_general.mdc` YAPMA bölümü geçerli).

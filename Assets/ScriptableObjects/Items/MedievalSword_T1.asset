@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 255b08e988f3816419712b98c79e9ba5, type: 3}
   m_Name: MedievalSword_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemName: Medieval Sword
+  itemName: Orta Çağ Kılıcı
   icon: {fileID: -1000010001, guid: aabb0011ccddeeff1122334455667788, type: 3}
   baseAttack: 8
   baseDefense: 0

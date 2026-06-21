@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 255b08e988f3816419712b98c79e9ba5, type: 3}
   m_Name: ModernBow_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemName: Modern Bow
+  itemName: Modern Yay
   icon: {fileID: 1000020003, guid: bbcc0022ddeeff0011223344556677aa, type: 3}
   baseAttack: 18
   baseDefense: 0

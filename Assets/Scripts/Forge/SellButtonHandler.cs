@@ -1,21 +1,24 @@
 using UnityEngine;
 
-// SELL butonuna basildiginda son forge edilen item satilir, gold artar.
+// SELL butonuna basildiginda secili envanter slotundaki item satilir.
 public class SellButtonHandler : MonoBehaviour
 {
-    [SerializeField] private ForgeButtonHandler forgeButtonHandler;
+    [SerializeField] private InventoryManager inventoryManager;
     [SerializeField] private EconomyManager economyManager;
     [SerializeField] private GoldDisplayUI goldDisplayUI;
     [SerializeField] private SaveManager saveManager;
     [SerializeField] private AnvilManager anvilManager;
+    [SerializeField] private ForgeButtonHandler forgeButtonHandler;
 
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnSellClicked()
     {
-        if (forgeButtonHandler.IsForging) return;
+        if (forgeButtonHandler != null && forgeButtonHandler.IsForging) return;
 
-        ItemData item = forgeButtonHandler.LastForgedItem;
-        if (item == null) return;
+        EnsureInventoryManager();
+        if (inventoryManager == null) return;
+
+        if (!inventoryManager.TryRemoveSelected(out ItemData item) || item == null) return;
 
         double sellGold = anvilManager != null
             ? anvilManager.GetScaledSellPrice(item.SellPrice)
@@ -23,8 +26,12 @@ public class SellButtonHandler : MonoBehaviour
 
         economyManager.AddGold(sellGold);
         goldDisplayUI.RefreshDisplay();
-
-        forgeButtonHandler.ClearLastItem();
         saveManager?.SaveGame();
+    }
+
+    private void EnsureInventoryManager()
+    {
+        if (inventoryManager == null)
+            inventoryManager = FindFirstObjectByType<InventoryManager>();
     }
 }

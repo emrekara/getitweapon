@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 9 — Satılmamış item koruması ✅ |
-| **Son çalışan özellik** | Forge, elde satılmamış item varken engellenir; SELL sonrası tekrar açılır |
+| **Aşama** | 13 — Türkçe UI + forge layout düzeltmesi ✅ |
+| **Son çalışan özellik** | Türkçe metinler (`GameTexts`), OTO DÖV/SAT, akıllı auto-sell popup, forge timer/buton çakışması giderildi |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | Envanter sistemi (çoklu item) |
-| **Henüz yok** | Envanter grid, REST remote config, tech tree |
+| **Sonraki hedef** | i18n altyapısı, tech tree iskelet, auto-sell filtresi (tier/era) |
+| **Henüz yok** | Çoklu dil (i18n), tech tree, REST remote config |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -21,20 +21,51 @@ EconomyManager (sahne objesi)
   ├── CurrentGold, AddGold(), TrySpendGold()
   └── Inspector: startingGold
 
+GameTexts (static — simdilik Turkce, ileride i18n)
+  ├── Buton/uyari/popup metinleri
+  ├── FormatDuration, FormatOfflineDuration, GetEraDisplayName
+  └── GoldAmount, AnvilInfo, OfflineWelcome vb.
+
 GoldDisplayUI (GoldText üzerinde)
   ├── EconomyManager + TextMeshProUGUI referansı
-  └── RefreshDisplay() → "Gold: X"
+  └── RefreshDisplay() → "X Altın"
 
 ItemData (ScriptableObject)
   ├── itemName, icon, baseAttack, sellPrice, tier, era
   └── Create: Assets → Create → GetItWeapon → Item Data
 
 ForgeButtonHandler (ForgeButton üzerinde)
-  ├── itemDatabase.GetRandomItemForEra(CurrentEra), anvilManager
-  ├── HasUnsoldItem → forge engeli; RefreshForgeButtonState()
-  ├── Forge başlayınca HideItemDisplay(), IsForging
-  ├── OnAnvilLevelChanged → RefreshLastItemDisplay (sell fiyat UI)
+  ├── itemDatabase.GetRandomItemForEra(CurrentEra), anvilManager, inventoryManager
+  ├── ForgeAutomationManager.ProcessForgedItem() coroutine
+  ├── Envanter dolu → FORGE kilitli + "Envanter dolu!"
   └── Coroutine ile forge + SaveGame
+
+ForgeAutomationManager (SaveManager objesi, runtime)
+  ├── autoForgeEnabled, autoSellEnabled (save)
+  ├── ProcessForgedItem: otomatik sat / popup / envantere ekle
+  ├── IsWaitingForUserDecision → auto-forge duraklat
+  └── TryKeepForgedItem, SellStrictlyWorseInventoryItems
+
+ItemComparer (static)
+  ├── HasAnyStatHigher/Lower, IsStrictlyWorse, ShouldPromptUser
+  └── FormatItemStats → SAL/SAV/Sev./Satış
+
+InventoryManager (SaveManager objesi, runtime)
+  ├── 8 slot, itemIndices[] (-1 = bos), selectedSlot
+  ├── TryAddItem / TryRemoveSelected / SelectSlot
+  ├── Export/Import + legacy lastItemIndex migration
+  └── OnInventoryChanged, OnSlotSelected
+
+InventoryPanelUI + InventorySlotUI (Canvas, runtime grid)
+  ├── 4x2 slot grid, secili item detay metni
+  └── GameUILayout: arka plan, header, buton renkleri
+
+AutoForgePanelUI + ForgeItemPromptUI (Canvas, runtime)
+  ├── OTO DÖV / OTO SAT toggle'ları
+  └── Daha iyi item popup: TUT / YENİSİNİ SAT
+
+GameUiBootstrap (runtime — Play'de UI kurulumu tetikler)
+GameUILayout + UITheme (layout sabitleri, forge zone konumlari)
 
 ItemDatabase (ScriptableObject)
   ├── MainItemDatabase: 12 item (Stone/Medieval/Modern/Space × sword/axe/bow)
@@ -50,24 +81,22 @@ AnvilManager (sahne objesi)
   ├── OnAnvilLevelChanged, OnUpgradeTimerChanged
   └── sellPriceMultiplierPerLevel, era gold çarpanları
 
-AnvilUpgradeSettings (ScriptableObject)
-  ├── useUpgradeTimer (kapalı = tüm upgrade anında)
-  ├── baseUpgradeDurationSeconds, levelRanges[] (min/max, durationMultiplier)
-  └── Create: Assets → Create → GetItWeapon → Anvil Upgrade Settings
-
 AnvilUpgradeHandler (UpgradeButton üzerinde)
   ├── Upgrade geri sayım UI, offline/load sonrası tamamlama
-  └── OnUpgradeClicked, yetersiz gold → "Need XXg"
+  └── OnUpgradeClicked, yetersiz gold → "Gerekli: Xg"
 
-SaveManager → GameSaveData: gold, lastItemIndex, anvilLevel, anvilUpgradeEndsAt, lastQuitTimestamp
+SaveManager → GameSaveData: gold, inventoryItemIndices[], selectedInventorySlot,
+  anvilLevel, anvilUpgradeEndsAt, lastQuitTimestamp, autoForgeEnabled, autoSellEnabled
+  └── legacy lastItemIndex → envanter slot 0'a migrate
 
 OfflineProgressManager (sahne objesi)
   ├── anvilManager.GetOfflineGoldPerSecond(), maxOfflineSeconds (28800 = 8 saat)
   ├── offlineMessageDurationSeconds (3.5) sonra mesaj kaybolur
-  ├── Load sonrası offline gold + OfflineMessageText
+  ├── Load sonrası offline gold + OfflineMessageText (Turkce)
   └── SaveGame() ile çift ödeme engeli
 
 Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug (gold, kayıt, missing script tarama)
+Assets/Editor/SceneBootstrap.cs → GetItWeapon/Setup Main UI
 
 Assets/Art/Icons/
   ├── icon_sword/axe/bow.png → Stone era
@@ -82,28 +111,48 @@ Assets/Art/Icons/
 Assets/Scripts/
 ├── Core/ (GameSaveData, SaveManager)
 ├── Economy/EconomyManager.cs
-├── Forge/ (ForgeButtonHandler, SellButtonHandler, ItemData, ItemDatabase, AnvilManager, AnvilUpgradeSettings)
+├── Forge/ (ForgeButtonHandler, SellButtonHandler, ForgeAutomationManager, ItemComparer,
+│          ItemData, ItemDatabase, AnvilManager, AnvilUpgradeSettings)
 ├── Idle/OfflineProgressManager.cs
-└── UI/ (GoldDisplayUI, AnvilUpgradeHandler)
+├── Inventory/InventoryManager.cs
+└── UI/ (GameTexts, GoldDisplayUI, AnvilUpgradeHandler, InventoryPanelUI, InventorySlotUI,
+         AutoForgePanelUI, ForgeItemPromptUI, GameUILayout, GameUiBootstrap, UITheme)
 
-Assets/Editor/DebugSaveMenu.cs
+Assets/Editor/DebugSaveMenu.cs, SceneBootstrap.cs
 ```
 
 ### UI Hierarchy (SampleScene)
 
 ```
-Canvas
-├── AnvilInfoText
-├── UpgradeButton (+ AnvilUpgradeHandler)
-├── ForgeTimerText
-├── ItemIcon
-├── GoldText (+ GoldDisplayUI)
-├── OfflineMessageText
+Canvas (+ GameUiBootstrap, GameUILayout, InventoryPanelUI — runtime)
+├── Background (koyu tema)
+├── HeaderPanel
+│   ├── GoldText
+│   └── AnvilInfoText
+├── ForgeTimerText (raycastTarget kapali, butonun ustunde ayri satir)
 ├── ForgeButton (+ ForgeButtonHandler)
-├── LastItemText
-└── SellButton (+ SellButtonHandler)
-EconomyManager | SaveManager | AnvilManager | OfflineProgressManager
+├── AutoForgePanel (runtime: OTO DÖV / OTO SAT)
+├── InventoryPanel (4x8 grid, runtime)
+├── SelectedItemText
+├── UpgradeButton (+ AnvilUpgradeHandler)
+├── SellButton (+ SellButtonHandler)
+├── OfflineMessageText
+└── ForgeItemPrompt (runtime popup)
+(ItemIcon, LastItemText — gizli/legacy)
+EconomyManager | SaveManager (+ InventoryManager, ForgeAutomationManager) | AnvilManager | OfflineProgressManager
 EventSystem
+```
+
+### Forge Zone Layout (UITheme sabitleri)
+
+```
+Header (112px)
+ForgeTimerText  → top 120, h 32
+[12px gap]
+ForgeButton     → top 164, h 80
+[12px gap]
+AutoForgePanel  → top 256, h 96
+Envanter        → topInset 364
 ```
 
 ---
@@ -126,13 +175,102 @@ EventSystem
 | 7b | Satış fiyatı anvil çarpanı | ✅ | GetScaledSellPrice + UI event |
 | 7c | Era item'ları | ✅ | 4 çağ, 12 item + çağ ikonları |
 | 8 | Anvil upgrade timer | ✅ | Config SO, level aralığı, save/load, offline |
-| 9 | Satılmamış item koruması | ✅ | Forge öncesi SELL zorunluluğu, buton kilidi |
+| 9 | Satılmamış item koruması | ✅ | Tek slot; envantere gecildi |
+| 10 | Envanter MVP + UI tema | ✅ | 8 slot, save/load, koyu tema, header |
+| 11 | Auto-forge / Auto-sell toggle | ✅ | OTO DÖV / OTO SAT, save alanları |
+| 12 | Akıllı auto-sell + popup | ✅ | Stat karsilastirma, TUT/YENİSİNİ SAT |
+| 13 | Türkçe UI + forge layout | ✅ | GameTexts, item isimleri, timer/buton çakışması giderildi |
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-21] Türkçe UI, auto-forge/sell ve forge layout düzeltmesi
+
+**Aşama:** 11–13 — Otomasyon + Türkçe UI + layout
+
+**Ne yapıldı:**
+- `GameTexts`: tüm oyuncu metinleri merkezi Türkçe sabitler (ileride i18n için hazır).
+- 12 item asset ismi Türkçeleştirildi (Taş Kılıç, Orta Çağ Baltası, Uzay Yayı vb.).
+- `ForgeAutomationManager`: OTO DÖV / OTO SAT; akıllı satış (zayıf item otomatik sat).
+- `ItemComparer` + `ForgeItemPromptUI`: daha iyi item veya envanter dolu+eşit stat → TUT / YENİSİNİ SAT popup.
+- `AutoForgePanelUI`, `GameUiBootstrap`, `GameUILayout`, `UITheme`: runtime UI kurulumu ve tema.
+- Envanter MVP (8 slot), save/load migration, koyu tema UI (aşama 10 tamamlama).
+- Forge zone layout: timer metni butonla çakışmıyor; `raycastTarget` kapalı → DÖV butonu tam tıklanabilir.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/UI/GameTexts.cs` (yeni)
+- `Assets/Scripts/Forge/ForgeAutomationManager.cs`, `ItemComparer.cs` (yeni)
+- `Assets/Scripts/UI/AutoForgePanelUI.cs`, `ForgeItemPromptUI.cs`, `GameUILayout.cs`, `GameUiBootstrap.cs`, `UITheme.cs` (yeni)
+- `Assets/Scripts/Inventory/InventoryManager.cs` (yeni)
+- `Assets/Scripts/UI/InventoryPanelUI.cs`, `InventorySlotUI.cs` (yeni)
+- `Assets/Scripts/Core/GameSaveData.cs`, `SaveManager.cs`
+- `Assets/Scripts/Forge/ForgeButtonHandler.cs`, `SellButtonHandler.cs`, `ItemData.cs`
+- `Assets/Scripts/UI/AnvilUpgradeHandler.cs`, `GoldDisplayUI.cs`
+- `Assets/Scripts/Idle/OfflineProgressManager.cs`
+- `Assets/Editor/SceneBootstrap.cs` (yeni)
+- `Assets/ScriptableObjects/Items/*.asset` (12 item Türkçe isim)
+- `Assets/Scenes/SampleScene.unity`
+- `.cursor/rules/3_sprint-mode.mdc` (yeni)
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- Ekstra Inspector adımı gerekmez; Play'de UI otomatik kurulur.
+- Test: Game view 9:16 veya 1080×1920 aspect önerilir.
+
+**Test kriteri:**
+- Tüm UI metinleri Türkçe (DÖV, SAT, YÜKSELT, OTO DÖV/SAT, popup, offline mesaj).
+- Dövme sırasında "Dövülüyor..." metni butonu kapatmaz; DÖV tam tıklanır.
+- OTO SAT açık: zayıf item otomatik satılır; daha iyi item → popup.
+- Envanter 8 slot, save/load korunur.
+
+**AI bağlam notları:**
+- `GameTexts` → ileride localization key'lerine dönüştürülecek.
+- Auto-sell filtresi (tier/era bazlı) henüz yok (spec §3.1).
+- Sıradaki: i18n iskelet veya tech tree (spec §3.4).
+
+---
+
+### [2026-06-21] Envanter MVP ve UI tema güncellemesi
+
+**Aşama:** 10 — Envanter MVP + UI tema
+
+**Ne yapıldı:**
+- 8 slot envanter: forge item'ı slota ekler, envanter dolana kadar tekrar forge.
+- Slot tıklama → seçim; SELL seçili slotu satar.
+- Save/load: `inventoryItemIndices[]`, `selectedInventorySlot`; eski `lastItemIndex` otomatik migrate.
+- UI tema: koyu arka plan, header (gold + anvil), renkli butonlar (forge/sell/upgrade).
+- Runtime UI kurulumu: `GameUILayout`, `InventoryPanelUI` Play'de otomatik oluşur.
+- Editor menü: `GetItWeapon → Setup Main UI`.
+- Sprint modu kuralı: `.cursor/rules/3_sprint-mode.mdc`.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Inventory/InventoryManager.cs` (yeni)
+- `Assets/Scripts/UI/InventoryPanelUI.cs`, `InventorySlotUI.cs`, `GameUILayout.cs`, `UITheme.cs` (yeni)
+- `Assets/Scripts/Forge/ForgeButtonHandler.cs`, `SellButtonHandler.cs`
+- `Assets/Scripts/Core/GameSaveData.cs`, `SaveManager.cs`
+- `Assets/Scripts/UI/GoldDisplayUI.cs`
+- `Assets/Editor/SceneBootstrap.cs` (yeni)
+- `.cursor/rules/3_sprint-mode.mdc` (yeni)
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- Ekstra Inspector adımı gerekmez; Play'de otomatik kurulur.
+- İsteğe bağlı: `GetItWeapon → Setup Main UI` + Ctrl+S.
+
+**Test kriteri:**
+- FORGE × 3 → 3 slot dolu, tek tek seçilebilir.
+- 8 forge → "Inventory full!", FORGE kilitli.
+- SELL → seçili slot boşalır, gold artar, forge tekrar açılır.
+- Stop → Play → envanter korunur.
+
+**AI bağlam notları:**
+- ItemIcon/LastItemText legacy; gizlendi, silinebilir.
+- Sıradaki: auto-forge + auto-sell filtresi (spec §3.1).
+
+---
 
 ### [2026-06-21] Satılmamış item koruması — forge öncesi SELL zorunluluğu
 

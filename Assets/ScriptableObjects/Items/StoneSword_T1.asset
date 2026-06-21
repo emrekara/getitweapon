@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 255b08e988f3816419712b98c79e9ba5, type: 3}
   m_Name: StoneSword_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemName: Stone Sword
+  itemName: Taş Kılıç
   icon: {fileID: -2124102372771563869, guid: f26fa54a455756f4c9c16773e1c27fb4, type: 3}
   baseAttack: 3
   baseDefense: 0

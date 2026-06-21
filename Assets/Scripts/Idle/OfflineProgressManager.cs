@@ -51,8 +51,8 @@ public class OfflineProgressManager : MonoBehaviour
         if (goldDisplayUI != null)
             goldDisplayUI.RefreshDisplay();
 
-        string timeLabel = FormatOfflineDuration(elapsed);
-        string message = $"Welcome back! +{earnedGold:0} gold ({timeLabel} offline)";
+        string timeLabel = GameTexts.FormatOfflineDuration(elapsed);
+        string message = GameTexts.OfflineWelcome(earnedGold, timeLabel);
 
         if (offlineMessageText != null)
         {
@@ -80,24 +80,5 @@ public class OfflineProgressManager : MonoBehaviour
             offlineMessageText.text = string.Empty;
 
         hideMessageCoroutine = null;
-    }
-
-    /// <summary>Offline sureyi okunabilir metne cevirir.</summary>
-    private static string FormatOfflineDuration(double totalSeconds)
-    {
-        int seconds = (int)Math.Floor(totalSeconds);
-
-        if (seconds < 60)
-            return $"{seconds}s";
-
-        int minutes = seconds / 60;
-        int remainingSeconds = seconds % 60;
-
-        if (minutes < 60)
-            return remainingSeconds > 0 ? $"{minutes}m {remainingSeconds}s" : $"{minutes}m";
-
-        int hours = minutes / 60;
-        int remainingMinutes = minutes % 60;
-        return remainingMinutes > 0 ? $"{hours}h {remainingMinutes}m" : $"{hours}h";
     }
 }

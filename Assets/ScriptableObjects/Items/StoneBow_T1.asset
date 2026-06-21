@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 255b08e988f3816419712b98c79e9ba5, type: 3}
   m_Name: StoneBow_T1
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemName: Stone Bow
+  itemName: Taş Yay
   icon: {fileID: 789012345678901234, guid: c8d9e0f1a2b3c4d5e6f708192a3b4c5d, type: 3}
   baseAttack: 4
   baseDefense: 0
