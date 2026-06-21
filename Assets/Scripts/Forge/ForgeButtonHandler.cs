@@ -305,8 +305,8 @@ public class ForgeButtonHandler : MonoBehaviour
     {
         if (inventoryManager == null) yield break;
 
-        if (inventoryManager.ContainsItem(forgedItem))
-            ShowStatusMessage(GameTexts.ItemAlreadyInInventory(forgedItem.ItemName));
+        if (inventoryManager.ContainsCategory(forgedItem.Category))
+            ShowStatusMessage(GameTexts.ItemCategoryAlreadyInInventory(forgedItem.Category));
         else if (!inventoryManager.TryAddItem(forgedItem))
             ShowStatusMessage(GameTexts.InventoryFull);
 

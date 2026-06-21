@@ -19,3 +19,4 @@ MonoBehaviour:
   sellPrice: 15
   tier: 2
   era: Medieval
+  category: 0

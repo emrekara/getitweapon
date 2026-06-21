@@ -20,6 +20,7 @@ public class AutoForgePanelUI : MonoBehaviour
     private Button eraPrevButton;
     private Button eraNextButton;
     private bool isBuilt;
+    private bool listenersRegistered;
 
     private void Start()
     {
@@ -40,7 +41,6 @@ public class AutoForgePanelUI : MonoBehaviour
     public void Configure(ForgeAutomationManager manager)
     {
         automationManager = manager;
-        isBuilt = false;
         BuildIfNeeded();
         SubscribeEvents();
         RefreshLabels();
@@ -68,30 +68,37 @@ public class AutoForgePanelUI : MonoBehaviour
         if (existing == null)
             panelObject.transform.SetParent(transform, false);
 
+        RemoveDuplicateRows(panelObject.transform);
+
         RectTransform panelRect = panelObject.GetComponent<RectTransform>();
         GameUILayout.AnchorTopCenter(
             panelRect,
             UITheme.AutoForgePanelTopOffset,
             new Vector2(920f, UITheme.AutoForgePanelHeight));
 
-        autoForgeToggle = CreateToggleRow(panelObject.transform, "AutoForgeToggle", GameTexts.AutoForgeOff, 0f,
+        autoForgeToggle = FindOrCreateToggleRow(panelObject.transform, "AutoForgeToggle", GameTexts.AutoForgeOff, 0f,
             out autoForgeLabel, out _, out _);
-        autoSellToggle = CreateToggleRow(panelObject.transform, "AutoSellToggle", GameTexts.AutoSellOff, -44f,
+        autoSellToggle = FindOrCreateToggleRow(panelObject.transform, "AutoSellToggle", GameTexts.AutoSellOff, -44f,
             out autoSellLabel, out _, out _);
-        tierFilterToggle = CreateToggleRow(panelObject.transform, "TierFilterToggle",
+        tierFilterToggle = FindOrCreateToggleRow(panelObject.transform, "TierFilterToggle",
             GameTexts.AutoSellTierFilterOffLabel, -88f, out tierFilterLabel, out tierPrevButton, out tierNextButton);
-        eraFilterToggle = CreateToggleRow(panelObject.transform, "EraFilterToggle",
+        eraFilterToggle = FindOrCreateToggleRow(panelObject.transform, "EraFilterToggle",
             GameTexts.AutoSellEraFilterOffLabel, -132f, out eraFilterLabel, out eraPrevButton, out eraNextButton);
 
-        autoForgeToggle.onValueChanged.AddListener(OnAutoForgeToggled);
-        autoSellToggle.onValueChanged.AddListener(OnAutoSellToggled);
-        tierFilterToggle.onValueChanged.AddListener(OnTierFilterToggled);
-        eraFilterToggle.onValueChanged.AddListener(OnEraFilterToggled);
+        if (!listenersRegistered)
+        {
+            autoForgeToggle.onValueChanged.AddListener(OnAutoForgeToggled);
+            autoSellToggle.onValueChanged.AddListener(OnAutoSellToggled);
+            tierFilterToggle.onValueChanged.AddListener(OnTierFilterToggled);
+            eraFilterToggle.onValueChanged.AddListener(OnEraFilterToggled);
 
-        tierPrevButton.onClick.AddListener(OnTierPrevClicked);
-        tierNextButton.onClick.AddListener(OnTierNextClicked);
-        eraPrevButton.onClick.AddListener(OnEraPrevClicked);
-        eraNextButton.onClick.AddListener(OnEraNextClicked);
+            tierPrevButton.onClick.AddListener(OnTierPrevClicked);
+            tierNextButton.onClick.AddListener(OnTierNextClicked);
+            eraPrevButton.onClick.AddListener(OnEraPrevClicked);
+            eraNextButton.onClick.AddListener(OnEraNextClicked);
+
+            listenersRegistered = true;
+        }
 
         autoForgeToggle.SetIsOnWithoutNotify(automationManager.AutoForgeEnabled);
         autoSellToggle.SetIsOnWithoutNotify(automationManager.AutoSellEnabled);
@@ -99,6 +106,60 @@ public class AutoForgePanelUI : MonoBehaviour
         eraFilterToggle.SetIsOnWithoutNotify(automationManager.AutoSellEraFilterEnabled);
 
         isBuilt = true;
+    }
+
+    private static void RemoveDuplicateRows(Transform panel)
+    {
+        var seen = new System.Collections.Generic.HashSet<string>();
+
+        for (int i = panel.childCount - 1; i >= 0; i--)
+        {
+            Transform child = panel.GetChild(i);
+            if (seen.Add(child.name)) continue;
+
+            if (Application.isPlaying)
+                Destroy(child.gameObject);
+            else
+                DestroyImmediate(child.gameObject);
+        }
+    }
+
+    private Toggle FindOrCreateToggleRow(Transform parent, string objectName, string label, float yOffset,
+        out TextMeshProUGUI labelText, out Button prevButton, out Button nextButton)
+    {
+        Transform existingRow = parent.Find(objectName);
+        if (existingRow != null)
+        {
+            EnsureSingleRowLabel(existingRow);
+            labelText = existingRow.Find("Label")?.GetComponent<TextMeshProUGUI>();
+            prevButton = existingRow.Find("PrevButton")?.GetComponent<Button>();
+            nextButton = existingRow.Find("NextButton")?.GetComponent<Button>();
+            return existingRow.GetComponent<Toggle>();
+        }
+
+        return CreateToggleRow(parent, objectName, label, yOffset, out labelText, out prevButton, out nextButton);
+    }
+
+    private static void EnsureSingleRowLabel(Transform row)
+    {
+        Transform keepLabel = null;
+
+        for (int i = row.childCount - 1; i >= 0; i--)
+        {
+            Transform child = row.GetChild(i);
+            if (child.name != "Label") continue;
+
+            if (keepLabel == null)
+            {
+                keepLabel = child;
+                continue;
+            }
+
+            if (Application.isPlaying)
+                Destroy(child.gameObject);
+            else
+                DestroyImmediate(child.gameObject);
+        }
     }
 
     private void SubscribeEvents()

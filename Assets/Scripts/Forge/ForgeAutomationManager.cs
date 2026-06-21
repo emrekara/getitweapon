@@ -78,13 +78,32 @@ public class ForgeAutomationManager : MonoBehaviour
         if (forgedItem == null)
             yield break;
 
-        if (inventoryManager != null && inventoryManager.ContainsItem(forgedItem))
+        if (inventoryManager != null && inventoryManager.ContainsCategory(forgedItem.Category))
         {
-            if (autoSellEnabled)
-                SellForgedItem(forgedItem);
-            else
-                QueueForgeFeedback(GameTexts.ItemAlreadyInInventory(forgedItem.ItemName));
+            ItemData categoryItem = inventoryManager.GetItemInCategory(forgedItem.Category);
+            bool categoryInventoryFull = inventoryManager.IsFull;
 
+            if (ItemComparer.IsStrictlyWorse(forgedItem, categoryItem))
+            {
+                if (autoSellEnabled)
+                    SellForgedItem(forgedItem);
+                else
+                    QueueForgeFeedback(GameTexts.ItemCategoryAlreadyInInventory(forgedItem.Category));
+
+                yield break;
+            }
+
+            if (ItemComparer.AreAllStatsEqual(forgedItem, categoryItem))
+            {
+                if (autoSellEnabled)
+                    SellForgedItem(forgedItem);
+                else
+                    QueueForgeFeedback(GameTexts.ItemCategoryAlreadyInInventory(forgedItem.Category));
+
+                yield break;
+            }
+
+            yield return PromptKeepOrSell(forgedItem, categoryItem, categoryInventoryFull);
             yield break;
         }
 
@@ -206,10 +225,17 @@ public class ForgeAutomationManager : MonoBehaviour
     {
         if (inventoryManager == null || forgedItem == null) return false;
 
-        if (inventoryManager.ContainsItem(forgedItem))
+        int categorySlot = inventoryManager.GetSlotIndexOfCategory(forgedItem.Category);
+        if (categorySlot >= 0)
         {
+            if (inventoryManager.TryRemoveFromSlot(categorySlot, out ItemData categoryReplacedItem))
+                TrySellItem(categoryReplacedItem);
+
+            if (inventoryManager.TryAddItem(forgedItem))
+                return true;
+
             TrySellItem(forgedItem);
-            return true;
+            return false;
         }
 
         if (inventoryManager.TryAddItem(forgedItem))
@@ -395,6 +421,7 @@ public class ForgeAutomationManager : MonoBehaviour
 
             ItemData slotItem = inventoryManager.GetItemInSlot(i);
             if (slotItem == null) continue;
+            if (slotItem.Category != keeper.Category) continue;
 
             if (ItemComparer.IsStrictlyWorseOrEqual(slotItem, keeper))
                 slotsToSell.Add(i);

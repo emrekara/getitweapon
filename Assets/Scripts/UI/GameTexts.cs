@@ -17,6 +17,22 @@ public static class GameTexts
     public static string InventoryFull => LocalizationManager.Get(LocalizationKey.InventoryFull);
     public static string ItemAlreadyInInventory(string itemName) =>
         LocalizationManager.Format(LocalizationKey.ItemAlreadyInInventory, itemName);
+
+    public static string ItemCategoryAlreadyInInventory(ItemCategory category) =>
+        LocalizationManager.Format(LocalizationKey.ItemCategoryAlreadyInInventory, GetItemCategoryDisplayName(category));
+
+    public static string GetItemCategoryDisplayName(ItemCategory category)
+    {
+        switch (category)
+        {
+            case ItemCategory.Weapon: return LocalizationManager.Get(LocalizationKey.ItemCategoryWeapon);
+            case ItemCategory.Armor: return LocalizationManager.Get(LocalizationKey.ItemCategoryArmor);
+            case ItemCategory.Earring: return LocalizationManager.Get(LocalizationKey.ItemCategoryEarring);
+            case ItemCategory.Necklace: return LocalizationManager.Get(LocalizationKey.ItemCategoryNecklace);
+            default: return category.ToString();
+        }
+    }
+
     public static string SelectFromInventory => LocalizationManager.Get(LocalizationKey.SelectFromInventory);
     public static string InventoryEmpty => LocalizationManager.Get(LocalizationKey.InventoryEmpty);
 
@@ -135,8 +151,28 @@ public static class GameTexts
     public static string FormatOfflineDuration(double totalSeconds) =>
         LocalizationManager.FormatOfflineDuration(totalSeconds);
 
-    /// <summary>Tech node adini dondurur.</summary>
-    public static string GetTechNodeName(LocalizationKey nameKey) => LocalizationManager.Get(nameKey);
+    /// <summary>Tech node adini dondurur (nodeId oncelikli; enum kaymasina karsi).</summary>
+    public static string GetTechNodeName(TechNodeData node)
+    {
+        if (node == null) return string.Empty;
+        return GetTechNodeName(node.NodeId, node.DisplayNameKey);
+    }
+
+    /// <summary>Tech node adini nodeId veya fallback anahtardan cozer.</summary>
+    public static string GetTechNodeName(string nodeId, LocalizationKey fallbackKey)
+    {
+        switch (nodeId)
+        {
+            case "forge_speed":
+                return LocalizationManager.Get(LocalizationKey.TechNodeForgeSpeed);
+            case "upgrade_cost":
+                return LocalizationManager.Get(LocalizationKey.TechNodeUpgradeCost);
+            case "offline_gold":
+                return LocalizationManager.Get(LocalizationKey.TechNodeOfflineGold);
+            default:
+                return LocalizationManager.Get(fallbackKey);
+        }
+    }
 
     /// <summary>Tech node seviye etiketi.</summary>
     public static string TechNodeLevel(int current, int max) =>

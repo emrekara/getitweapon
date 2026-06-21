@@ -11,6 +11,7 @@ public class ItemData : ScriptableObject
     [SerializeField] private double sellPrice = 5;
     [SerializeField] private int tier = 1;
     [SerializeField] private string era = "Stone";
+    [SerializeField] private ItemCategory category = ItemCategory.Weapon;
 
     public string ItemName => itemName;
     public Sprite Icon => icon;
@@ -20,4 +21,6 @@ public class ItemData : ScriptableObject
     public int Tier => tier;
     /// <summary>Item cagi: Stone, Medieval, Modern, Space.</summary>
     public string Era => era;
+    /// <summary>Ekipman kategorisi (silah, zirh, kupe, kolye...).</summary>
+    public ItemCategory Category => category;
 }

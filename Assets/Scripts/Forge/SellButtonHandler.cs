@@ -15,8 +15,8 @@ public class SellButtonHandler : MonoBehaviour
     {
         if (forgeButtonHandler != null && forgeButtonHandler.IsForging) return;
 
-        EnsureInventoryManager();
-        if (inventoryManager == null) return;
+        EnsureReferences();
+        if (inventoryManager == null || economyManager == null) return;
 
         if (!inventoryManager.TryRemoveSelected(out ItemData item) || item == null) return;
 
@@ -25,13 +25,28 @@ public class SellButtonHandler : MonoBehaviour
             : item.SellPrice;
 
         economyManager.AddGold(sellGold);
-        goldDisplayUI.RefreshDisplay();
+        goldDisplayUI?.RefreshDisplay();
         saveManager?.SaveGame();
     }
 
-    private void EnsureInventoryManager()
+    private void EnsureReferences()
     {
         if (inventoryManager == null)
             inventoryManager = FindFirstObjectByType<InventoryManager>();
+
+        if (economyManager == null)
+            economyManager = FindFirstObjectByType<EconomyManager>();
+
+        if (goldDisplayUI == null)
+            goldDisplayUI = FindFirstObjectByType<GoldDisplayUI>();
+
+        if (anvilManager == null)
+            anvilManager = FindFirstObjectByType<AnvilManager>();
+
+        if (saveManager == null)
+            saveManager = FindFirstObjectByType<SaveManager>();
+
+        if (forgeButtonHandler == null)
+            forgeButtonHandler = FindFirstObjectByType<ForgeButtonHandler>();
     }
 }

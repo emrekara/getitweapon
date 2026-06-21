@@ -9,7 +9,7 @@
 | Alan | Değer |
 |------|-------|
 | **Aşama** | 17 — Tech araştırma timer ✅ (Aşama 18 öncesi UI + envanter düzeltmeleri) |
-| **Son çalışan özellik** | Forge butonunda % ilerleme; OTO SAT akıllı filtre; envanterde tip başına tek item |
+| **Son çalışan özellik** | Envanter kategori tekilliği (silah/kıyafet/küpe/kolye); SAT düzeltmesi; araştırma paneli KAPAT |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
 | **Sonraki hedef** | Aşama 18 — Hammers meta para |
 | **Henüz yok** | Hammers, minigame, tech dallanma, remote config |
@@ -41,15 +41,24 @@ TechTreeManager (SaveManager objesi, runtime)
   └── GetForgeSpeedMultiplier, GetUpgradeCostMultiplier, GetOfflineGoldMultiplier
 
 TechTreePanelUI (Canvas, runtime)
-  └── ARAŞTIRMA butonu + dugum listesi paneli
+  ├── ARAŞTIRMA butonu + dugum listesi paneli
+  ├── KAPAT butonu + karartma (disari tikla kapat)
+  └── GetTechNodeName: nodeId ile lokalizasyon (enum kaymasi korumasi)
+
+SellButtonHandler (SellButton üzerinde)
+  └── Runtime referans cozumleme; goldDisplayUI null hatasi giderildi
 
 GoldDisplayUI (GoldText üzerinde)
   ├── EconomyManager + TextMeshProUGUI referansı
   └── RefreshDisplay() → "X Altın"
 
 ItemData (ScriptableObject)
-  ├── itemName, icon, baseAttack, sellPrice, tier, era
+  ├── itemName, icon, baseAttack, sellPrice, tier, era, category (ItemCategory)
   └── Create: Assets → Create → GetItWeapon → Item Data
+
+ItemCategory (enum)
+  ├── Weapon, Armor, Earring, Necklace
+  └── Kilic/balta/yay hepsi Weapon; envanterde kategori basina tek slot
 
 ForgeButtonHandler (ForgeButton üzerinde)
   ├── itemDatabase.GetRandomItemForEra(CurrentEra), anvilManager, inventoryManager
@@ -71,8 +80,8 @@ ItemComparer (static)
 
 InventoryManager (SaveManager objesi, runtime)
   ├── 8 slot, itemIndices[] (-1 = bos), selectedSlot
-  ├── Tip basina tek item: ContainsItem, TryAddItem reddeder
-  ├── ImportState: eski kayittaki duplicate slotlari temizler
+  ├── Kategori basina tek item: ContainsCategory, TryAddItem reddeder
+  ├── ImportState: ayni kategorideki zayif duplicate'leri temizler (en gucluyu tutar)
   ├── TryAddItem / TryRemoveSelected / SelectSlot
   ├── Export/Import + legacy lastItemIndex migration
   └── OnInventoryChanged, OnSlotSelected
@@ -82,7 +91,7 @@ InventoryPanelUI + InventorySlotUI (Canvas, runtime grid)
   └── GameUILayout: arka plan, header, buton renkleri
 
 AutoForgePanelUI + ForgeItemPromptUI (Canvas, runtime)
-  ├── OTO DÖV / OTO SAT toggle'ları
+  ├── OTO DÖV / OTO SAT toggle'ları (duplicate satir/label onleme)
   └── Daha iyi item popup: TUT / YENİSİNİ SAT
 
 GameUiBootstrap (runtime — Play'de UI kurulumu tetikler)
@@ -137,7 +146,7 @@ Assets/Scripts/
 ├── Localization/ (LocalizationKey, LocalizationManager, TR/EN tablolar)
 ├── Economy/EconomyManager.cs
 ├── Forge/ (ForgeButtonHandler, SellButtonHandler, ForgeAutomationManager, AutoSellFilter,
-│          ItemComparer, ItemData, ItemDatabase, AnvilManager, AnvilUpgradeSettings)
+│          ItemComparer, ItemCategory, ItemData, ItemDatabase, AnvilManager, AnvilUpgradeSettings)
 ├── Tech/ (TechEffectType, TechNodeData, TechTreeDatabase, TechTreeManager)
 ├── Idle/OfflineProgressManager.cs
 ├── Inventory/InventoryManager.cs
@@ -214,6 +223,45 @@ Envanter        → topInset 424
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-21] Kategori tekilliği, SAT/araştırma UI ve OTO panel düzeltmeleri
+
+**Aşama:** 17 sonrası polish — Aşama 18 öncesi
+
+**Ne yapıldı:**
+- **Envanter kategori tekilliği:** `ItemCategory` (Silah, Kıyafet, Küpe, Kolye); kılıç/balta/yay aynı kategori → envanterde tek silah.
+- **Forge otomasyonu:** Aynı kategoride zayıf item satılır; güçlü item değiştirme popup'ı kategori slotuna göre çalışır.
+- **SAT düzeltmesi:** `SellButtonHandler` runtime `GoldDisplayUI` bulur; NullReference giderildi.
+- **Araştırma paneli:** Yeşil **KAPAT** butonu + karartma; dışarı tıklayınca kapanır.
+- **Tech node isimleri:** `{0} sa {1} dk` hatası — SO enum kayması düzeltildi; `nodeId` ile isim çözümleme.
+- **OTO panel:** Üst üste toggle satırı yüzünden silik "KAPALI" metni — duplicate satır/label temizlendi.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Forge/ItemCategory.cs` (yeni)
+- `Assets/Scripts/Forge/ItemData.cs`, `ForgeAutomationManager.cs`, `ForgeButtonHandler.cs`, `SellButtonHandler.cs`
+- `Assets/Scripts/Inventory/InventoryManager.cs`
+- `Assets/Scripts/UI/TechTreePanelUI.cs`, `AutoForgePanelUI.cs`, `GameTexts.cs`
+- `Assets/Scripts/Localization/` (kategori anahtarları, PanelClose)
+- `Assets/ScriptableObjects/Items/*.asset` (category: Weapon)
+- `Assets/ScriptableObjects/TechTree/*.asset` (displayNameKey düzeltmesi)
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- Play'de otomatik; eski duplicate OTO satırları ilk açılışta temizlenir.
+- İsteğe bağlı: `GetItWeapon → Setup Tech Tree` (SO anahtarlarını yeniler).
+
+**Test kriteri:**
+- Envanterde balta varken yay dövülür → tek silah kalır (OTO SAT veya popup).
+- SAT → gold artar, hata yok.
+- ARAŞTIRMA paneli → KAPAT veya dışarı tıkla → kapanır; düğüm adları doğru (Hızlı Dövme vb.).
+- OTO DÖV AÇIK iken arkada silik KAPALI görünmez.
+
+**AI bağlam notları:**
+- Sıradaki: **Aşama 18 — Hammers**.
+- Yeni item eklerken Inspector'da `Category` seçilmeli.
+- `LocalizationKey` enum'a ekleme yapılınca Tech SO'ları `Setup Tech Tree` ile güncellenmeli.
+
+---
 
 ### [2026-06-21] Forge UI sadeleştirme, OTO SAT düzeltmesi, envanter tekilliği
 

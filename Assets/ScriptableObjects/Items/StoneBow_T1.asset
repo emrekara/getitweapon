@@ -19,3 +19,4 @@ MonoBehaviour:
   sellPrice: 6
   tier: 1
   era: Stone
+  category: 0

@@ -27,6 +27,11 @@ public static class EnglishLocalization
 
         { LocalizationKey.InventoryFull, "Inventory full!" },
         { LocalizationKey.ItemAlreadyInInventory, "Already in inventory: {0}" },
+        { LocalizationKey.ItemCategoryAlreadyInInventory, "Already have {0}" },
+        { LocalizationKey.ItemCategoryWeapon, "Weapon" },
+        { LocalizationKey.ItemCategoryArmor, "Armor" },
+        { LocalizationKey.ItemCategoryEarring, "Earring" },
+        { LocalizationKey.ItemCategoryNecklace, "Necklace" },
         { LocalizationKey.SelectFromInventory, "Select an item from inventory" },
         { LocalizationKey.InventoryEmpty, "Inventory empty — forge to fill slots" },
 
@@ -66,6 +71,7 @@ public static class EnglishLocalization
         { LocalizationKey.DurationHoursMinutes, "{0}h {1}m" },
 
         { LocalizationKey.TechTreeTitle, "RESEARCH" },
+        { LocalizationKey.PanelClose, "CLOSE" },
         { LocalizationKey.TechNodeForgeSpeed, "Fast Forge" },
         { LocalizationKey.TechNodeUpgradeCost, "Cheaper Upgrade" },
         { LocalizationKey.TechNodeOfflineGold, "Offline Gold" },

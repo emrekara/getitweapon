@@ -13,6 +13,7 @@ public class TechTreePanelUI : MonoBehaviour
   [SerializeField] private EconomyManager economyManager;
 
   private GameObject panelRoot;
+  private GameObject backdropRoot;
   private Transform nodeListParent;
   private bool isBuilt;
   private Coroutine refreshCoroutine;
@@ -53,25 +54,55 @@ public class TechTreePanelUI : MonoBehaviour
     BuildIfNeeded();
     if (panelRoot == null) return;
 
-    bool willOpen = !panelRoot.activeSelf;
-    panelRoot.SetActive(willOpen);
-
-    if (willOpen)
-    {
-      panelRoot.transform.SetAsLastSibling();
-      RefreshPanel();
-      StartRefreshCoroutine();
-    }
+    if (panelRoot.activeSelf)
+      ClosePanel();
     else
+      OpenPanel();
+  }
+
+  /// <summary>Paneli kapatir.</summary>
+  public void ClosePanel()
+  {
+    if (backdropRoot != null)
+      backdropRoot.SetActive(false);
+
+    if (panelRoot != null)
+      panelRoot.SetActive(false);
+
+    StopRefreshCoroutine();
+  }
+
+  private void OpenPanel()
+  {
+    if (panelRoot == null) return;
+
+    if (backdropRoot != null)
     {
-      StopRefreshCoroutine();
+      backdropRoot.SetActive(true);
+      backdropRoot.transform.SetAsLastSibling();
     }
+
+    panelRoot.SetActive(true);
+    panelRoot.transform.SetAsLastSibling();
+    RefreshPanel();
+    StartRefreshCoroutine();
   }
 
   private void BuildIfNeeded()
   {
-    if (isBuilt || techTreeManager == null) return;
+    if (techTreeManager == null) return;
 
+    if (!isBuilt)
+    {
+      BuildPanelShell();
+      isBuilt = true;
+    }
+
+    EnsurePanelChromeControls();
+  }
+
+  private void BuildPanelShell()
+  {
     Transform existingToggle = transform.Find("TechTreeToggle");
     if (existingToggle == null)
     {
@@ -121,7 +152,7 @@ public class TechTreePanelUI : MonoBehaviour
       titleRect.anchorMax = new Vector2(1f, 1f);
       titleRect.pivot = new Vector2(0.5f, 1f);
       titleRect.anchoredPosition = Vector2.zero;
-      titleRect.sizeDelta = new Vector2(0f, 56f);
+      titleRect.sizeDelta = new Vector2(-180f, 56f);
 
       TextMeshProUGUI titleText = CreateLabel(titleObject.transform,
         LocalizationManager.Get(LocalizationKey.TechTreeTitle), 28f, TextAlignmentOptions.Center);
@@ -137,7 +168,7 @@ public class TechTreePanelUI : MonoBehaviour
       listRect.anchorMin = Vector2.zero;
       listRect.anchorMax = Vector2.one;
       listRect.offsetMin = new Vector2(16f, 16f);
-      listRect.offsetMax = new Vector2(-16f, -64f);
+      listRect.offsetMax = new Vector2(-16f, -72f);
       nodeListParent = listObject.transform;
     }
     else
@@ -146,7 +177,22 @@ public class TechTreePanelUI : MonoBehaviour
     }
 
     panelRoot.SetActive(false);
-    isBuilt = true;
+  }
+
+  private void EnsurePanelChromeControls()
+  {
+    if (panelRoot == null) return;
+
+    if (backdropRoot == null)
+    {
+      Transform backdropTransform = transform.Find("TechTreeBackdrop");
+      backdropRoot = backdropTransform != null
+        ? backdropTransform.gameObject
+        : CreateBackdrop();
+    }
+
+    if (panelRoot.transform.Find("CloseButton") == null)
+      CreateCloseButton();
   }
 
   private void SubscribeEvents()
@@ -221,6 +267,8 @@ public class TechTreePanelUI : MonoBehaviour
   {
     if (!isBuilt || nodeListParent == null || techTreeManager == null) return;
 
+    UpdatePanelChrome();
+
     for (int i = nodeListParent.childCount - 1; i >= 0; i--)
       Destroy(nodeListParent.GetChild(i).gameObject);
 
@@ -260,7 +308,7 @@ public class TechTreePanelUI : MonoBehaviour
     bool isResearching = techTreeManager.IsNodeResearching(node.NodeId);
     bool researchBusy = techTreeManager.HasPendingResearch && !isResearching;
 
-    string nameText = GameTexts.GetTechNodeName(node.DisplayNameKey);
+    string nameText = GameTexts.GetTechNodeName(node);
     string levelText = GameTexts.TechNodeLevel(level, node.MaxLevel);
     string effectText = GetEffectDescription(node, level);
 
@@ -339,6 +387,68 @@ public class TechTreePanelUI : MonoBehaviour
       RefreshPanel();
       UpdateRefreshCoroutine();
     }
+  }
+
+  private void UpdatePanelChrome()
+  {
+    if (panelRoot == null) return;
+
+    Transform titleTransform = panelRoot.transform.Find("Title");
+    if (titleTransform != null)
+    {
+      TextMeshProUGUI titleText = titleTransform.GetComponentInChildren<TextMeshProUGUI>();
+      if (titleText != null)
+        titleText.text = LocalizationManager.Get(LocalizationKey.TechTreeTitle);
+    }
+
+    Transform closeTransform = panelRoot.transform.Find("CloseButton");
+    if (closeTransform != null)
+    {
+      TextMeshProUGUI closeLabel = closeTransform.GetComponentInChildren<TextMeshProUGUI>();
+      if (closeLabel != null)
+        closeLabel.text = LocalizationManager.Get(LocalizationKey.PanelClose);
+    }
+  }
+
+  private GameObject CreateBackdrop()
+  {
+    GameObject backdropObject = new GameObject("TechTreeBackdrop", typeof(RectTransform), typeof(Image), typeof(Button));
+    backdropObject.transform.SetParent(transform, false);
+
+    RectTransform backdropRect = backdropObject.GetComponent<RectTransform>();
+    GameUILayout.StretchFull(backdropRect);
+
+    Image backdropImage = backdropObject.GetComponent<Image>();
+    backdropImage.color = new Color(0f, 0f, 0f, 0.65f);
+    backdropImage.raycastTarget = true;
+
+    Button backdropButton = backdropObject.GetComponent<Button>();
+    backdropButton.onClick.AddListener(ClosePanel);
+    backdropObject.SetActive(false);
+    return backdropObject;
+  }
+
+  private void CreateCloseButton()
+  {
+    GameObject closeObject = new GameObject("CloseButton", typeof(RectTransform), typeof(Image), typeof(Button));
+    closeObject.transform.SetParent(panelRoot.transform, false);
+
+    RectTransform closeRect = closeObject.GetComponent<RectTransform>();
+    closeRect.anchorMin = new Vector2(1f, 1f);
+    closeRect.anchorMax = new Vector2(1f, 1f);
+    closeRect.pivot = new Vector2(1f, 1f);
+    closeRect.anchoredPosition = new Vector2(-12f, -8f);
+    closeRect.sizeDelta = new Vector2(160f, 48f);
+
+    closeObject.GetComponent<Image>().color = UITheme.SellButton;
+
+    TextMeshProUGUI closeLabel = CreateLabel(closeObject.transform,
+      LocalizationManager.Get(LocalizationKey.PanelClose), 24f, TextAlignmentOptions.Center);
+    StretchLabel(closeLabel.rectTransform);
+    closeLabel.fontStyle = FontStyles.Bold;
+    closeLabel.color = Color.white;
+
+    closeObject.GetComponent<Button>().onClick.AddListener(ClosePanel);
   }
 
   private static string GetEffectDescription(TechNodeData node, int level)

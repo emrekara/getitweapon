@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TechNode_UpgradeCost
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeData
   nodeId: upgrade_cost
-  displayNameKey: 48
+  displayNameKey: 51
   effectType: 1
   maxLevel: 5
   valuePerLevel: 0.05

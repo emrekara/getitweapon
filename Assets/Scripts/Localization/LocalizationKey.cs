@@ -22,6 +22,11 @@ public enum LocalizationKey
 
     InventoryFull,
     ItemAlreadyInInventory,
+    ItemCategoryAlreadyInInventory,
+    ItemCategoryWeapon,
+    ItemCategoryArmor,
+    ItemCategoryEarring,
+    ItemCategoryNecklace,
     SelectFromInventory,
     InventoryEmpty,
 
@@ -61,6 +66,7 @@ public enum LocalizationKey
     DurationHoursMinutes,
 
     TechTreeTitle,
+    PanelClose,
     TechNodeForgeSpeed,
     TechNodeUpgradeCost,
     TechNodeOfflineGold,

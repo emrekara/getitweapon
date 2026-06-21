@@ -95,28 +95,46 @@ public class InventoryManager : MonoBehaviour
         return GetItemInSlot(selectedSlot);
     }
 
-    /// <summary>Envanterde ayni item tipi (SO) var mi.</summary>
-    public bool ContainsItem(ItemData item)
+    /// <summary>Envanterde bu kategoriden item var mi.</summary>
+    public bool ContainsCategory(ItemCategory category)
     {
-        return GetSlotIndexOfItem(item) >= 0;
+        return GetSlotIndexOfCategory(category) >= 0;
     }
 
-    /// <summary>Item tipinin bulundugu slot indeksi; yoksa -1.</summary>
-    public int GetSlotIndexOfItem(ItemData item)
+    /// <summary>Envanterde ayni kategoriden item var mi.</summary>
+    public bool ContainsItem(ItemData item)
+    {
+        if (item == null) return false;
+        return ContainsCategory(item.Category);
+    }
+
+    /// <summary>Kategorinin bulundugu slot indeksi; yoksa -1.</summary>
+    public int GetSlotIndexOfCategory(ItemCategory category)
     {
         EnsureInitialized();
-        if (item == null || itemDatabase == null) return -1;
-
-        int itemIndex = itemDatabase.IndexOf(item);
-        if (itemIndex < 0) return -1;
 
         for (int i = 0; i < itemIndices.Length; i++)
         {
-            if (itemIndices[i] == itemIndex)
+            ItemData item = GetItemInSlot(i);
+            if (item != null && item.Category == category)
                 return i;
         }
 
         return -1;
+    }
+
+    /// <summary>Kategorideki item'i dondurur; yoksa null.</summary>
+    public ItemData GetItemInCategory(ItemCategory category)
+    {
+        int slotIndex = GetSlotIndexOfCategory(category);
+        return slotIndex >= 0 ? GetItemInSlot(slotIndex) : null;
+    }
+
+    /// <summary>Ayni kategorideki item'in slot indeksi (ContainsItem icin uyumluluk).</summary>
+    public int GetSlotIndexOfItem(ItemData item)
+    {
+        if (item == null) return -1;
+        return GetSlotIndexOfCategory(item.Category);
     }
 
     /// <summary>Item'i ilk bos slota ekler ve o slotu secer.</summary>
@@ -127,7 +145,7 @@ public class InventoryManager : MonoBehaviour
         int itemIndex = itemDatabase.IndexOf(item);
         if (itemIndex < 0) return false;
 
-        if (ContainsItemIndex(itemIndex)) return false;
+        if (ContainsCategory(item.Category)) return false;
 
         int freeSlot = GetFirstFreeSlotIndex();
         if (freeSlot < 0) return false;
@@ -188,6 +206,14 @@ public class InventoryManager : MonoBehaviour
     {
         EnsureInitialized();
         if (newItem == null) return -1;
+
+        int categorySlot = GetSlotIndexOfCategory(newItem.Category);
+        if (categorySlot >= 0)
+        {
+            ItemData categoryItem = GetItemInSlot(categorySlot);
+            if (categoryItem != null && ItemComparer.IsStrictlyWorseOrEqual(categoryItem, newItem))
+                return categorySlot;
+        }
 
         int candidateSlot = -1;
         ItemData candidateItem = null;
@@ -253,7 +279,7 @@ public class InventoryManager : MonoBehaviour
             itemIndices[0] = legacyLastItemIndex;
         }
 
-        RemoveDuplicateItemTypes();
+        RemoveDuplicateCategories();
 
         if (IsValidSlot(savedSelectedSlot) && IsSlotOccupied(savedSelectedSlot))
             selectedSlot = savedSelectedSlot;
@@ -360,31 +386,34 @@ public class InventoryManager : MonoBehaviour
         return candidate.SellPrice < current.SellPrice;
     }
 
-    private bool ContainsItemIndex(int itemIndex)
+    private void RemoveDuplicateCategories()
     {
         EnsureInitialized();
-        if (itemIndex < 0) return false;
+        Dictionary<ItemCategory, int> bestSlotPerCategory = new Dictionary<ItemCategory, int>();
 
         for (int i = 0; i < itemIndices.Length; i++)
         {
-            if (itemIndices[i] == itemIndex)
-                return true;
+            ItemData item = GetItemInSlot(i);
+            if (item == null) continue;
+
+            if (!bestSlotPerCategory.TryGetValue(item.Category, out int bestSlot))
+            {
+                bestSlotPerCategory[item.Category] = i;
+                continue;
+            }
+
+            ItemData bestItem = GetItemInSlot(bestSlot);
+            if (bestItem != null && IsBetterReferenceItem(item, bestItem))
+                bestSlotPerCategory[item.Category] = i;
         }
 
-        return false;
-    }
-
-    private void RemoveDuplicateItemTypes()
-    {
-        EnsureInitialized();
-        HashSet<int> seen = new HashSet<int>();
-
+        HashSet<int> keepSlots = new HashSet<int>(bestSlotPerCategory.Values);
         for (int i = 0; i < itemIndices.Length; i++)
         {
-            int index = itemIndices[i];
-            if (index < 0) continue;
+            if (itemIndices[i] < 0) continue;
 
-            if (!seen.Add(index))
+            ItemData item = GetItemInSlot(i);
+            if (item != null && !keepSlots.Contains(i))
                 itemIndices[i] = -1;
         }
     }

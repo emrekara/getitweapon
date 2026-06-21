@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TechNode_OfflineGold
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeData
   nodeId: offline_gold
-  displayNameKey: 49
+  displayNameKey: 52
   effectType: 2
   maxLevel: 5
   valuePerLevel: 0.08

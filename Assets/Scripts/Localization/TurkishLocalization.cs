@@ -27,6 +27,11 @@ public static class TurkishLocalization
 
         { LocalizationKey.InventoryFull, "Envanter dolu!" },
         { LocalizationKey.ItemAlreadyInInventory, "Zaten envanterde: {0}" },
+        { LocalizationKey.ItemCategoryAlreadyInInventory, "Zaten {0} var" },
+        { LocalizationKey.ItemCategoryWeapon, "Silah" },
+        { LocalizationKey.ItemCategoryArmor, "Kıyafet" },
+        { LocalizationKey.ItemCategoryEarring, "Küpe" },
+        { LocalizationKey.ItemCategoryNecklace, "Kolye" },
         { LocalizationKey.SelectFromInventory, "Envanterden bir item seç" },
         { LocalizationKey.InventoryEmpty, "Envanter boş — slot doldurmak için döv" },
 
@@ -66,6 +71,7 @@ public static class TurkishLocalization
         { LocalizationKey.DurationHoursMinutes, "{0} sa {1} dk" },
 
         { LocalizationKey.TechTreeTitle, "ARAŞTIRMA" },
+        { LocalizationKey.PanelClose, "KAPAT" },
         { LocalizationKey.TechNodeForgeSpeed, "Hızlı Dövme" },
         { LocalizationKey.TechNodeUpgradeCost, "Ucuz Yükseltme" },
         { LocalizationKey.TechNodeOfflineGold, "Offline Altın" },
