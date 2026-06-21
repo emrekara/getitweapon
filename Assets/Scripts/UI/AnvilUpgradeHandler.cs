@@ -20,6 +20,18 @@ public class AnvilUpgradeHandler : MonoBehaviour
         upgradeButton = GetComponent<Button>();
     }
 
+    /// <summary>Runtime HUD referanslarini baglar.</summary>
+    public void ConfigureHud(TextMeshProUGUI anvilText, GoldDisplayUI goldDisplay)
+    {
+        if (anvilText != null)
+            anvilInfoText = anvilText;
+
+        if (goldDisplay != null)
+            goldDisplayUI = goldDisplay;
+
+        RefreshDisplay();
+    }
+
     private void Start()
     {
         if (upgradeButtonText != null)
@@ -38,12 +50,16 @@ public class AnvilUpgradeHandler : MonoBehaviour
     {
         if (anvilManager != null)
             anvilManager.OnUpgradeTimerChanged += HandleUpgradeTimerChanged;
+
+        LocalizationManager.OnLanguageChanged += RefreshDisplay;
     }
 
     private void OnDisable()
     {
         if (anvilManager != null)
             anvilManager.OnUpgradeTimerChanged -= HandleUpgradeTimerChanged;
+
+        LocalizationManager.OnLanguageChanged -= RefreshDisplay;
     }
 
     private System.Collections.IEnumerator RefreshAfterLoad()

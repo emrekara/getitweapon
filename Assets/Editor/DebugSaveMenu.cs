@@ -113,6 +113,29 @@ public static class DebugSaveMenu
         return path;
     }
 
+    [MenuItem("GetItWeapon/Debug/Dil: Turkce")]
+    private static void SetLanguageTurkish()
+    {
+        SetLanguage("tr");
+    }
+
+    [MenuItem("GetItWeapon/Debug/Dil: English")]
+    private static void SetLanguageEnglish()
+    {
+        SetLanguage("en");
+    }
+
+    private static void SetLanguage(string code)
+    {
+        LocalizationManager.SetLanguage(code);
+
+        GameSaveData data = LoadOrCreate();
+        data.languageCode = code;
+        WriteSave(data);
+
+        Debug.Log($"[Debug] Dil '{code}' olarak ayarlandi. Play modundaysa UI yenilendi.");
+    }
+
     [MenuItem("GetItWeapon/Debug/Kaydi Sil (Reset Save)")]
     private static void DeleteSave()
     {

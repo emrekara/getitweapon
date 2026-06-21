@@ -45,13 +45,25 @@ public class AnvilManager : MonoBehaviour
     public float GetForgeDuration()
     {
         float duration = baseForgeDuration - (anvilLevel - 1) * durationReductionPerLevel;
-        return Mathf.Max(1f, duration);
+        duration = Mathf.Max(1f, duration);
+
+        TechTreeManager techTree = FindFirstObjectByType<TechTreeManager>();
+        if (techTree != null)
+            duration /= techTree.GetForgeSpeedMultiplier();
+
+        return duration;
     }
 
     /// <summary>Sonraki seviye yukseltme maliyeti.</summary>
     public double GetUpgradeCost()
     {
-        return baseUpgradeCost * anvilLevel;
+        double cost = baseUpgradeCost * anvilLevel;
+
+        TechTreeManager techTree = FindFirstObjectByType<TechTreeManager>();
+        if (techTree != null)
+            cost *= techTree.GetUpgradeCostMultiplier();
+
+        return cost;
     }
 
     /// <summary>Mevcut seviye icin upgrade suresi (saniye); 0 = aninda.</summary>

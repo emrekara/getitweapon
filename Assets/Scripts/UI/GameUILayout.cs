@@ -13,6 +13,21 @@ public class GameUILayout : MonoBehaviour
         ApplyLayout();
     }
 
+    private void OnEnable()
+    {
+        LocalizationManager.OnLanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnDisable()
+    {
+        LocalizationManager.OnLanguageChanged -= OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged()
+    {
+        ApplyLayout();
+    }
+
     private void Start()
     {
         ApplyLayout();
@@ -25,11 +40,13 @@ public class GameUILayout : MonoBehaviour
         EnsureBackground();
         EnsureHeader();
         StyleActionButtons();
+        EnsureForgeButtonProgress();
         RepositionCoreElements();
         HideLegacyElements();
         EnsureInventoryPanel();
         EnsureAutoForgePanel();
         EnsureForgeItemPrompt();
+        EnsureTechTreePanel();
         inventoryPanelUI?.ApplyResponsiveLayout();
     }
 
@@ -86,11 +103,62 @@ public class GameUILayout : MonoBehaviour
         }
 
         AnchorTopStretch(headerRect, UITheme.HeaderHeight);
-        ReparentToHeader(FindChild<TextMeshProUGUI>("GoldText"), headerRect, new Vector2(0.04f, 0.5f), TextAlignmentOptions.MidlineLeft);
-        ReparentToHeader(FindChild<TextMeshProUGUI>("AnvilInfoText"), headerRect, new Vector2(0.96f, 0.5f), TextAlignmentOptions.MidlineRight);
+        headerRect.SetAsLastSibling();
+
+        TextMeshProUGUI goldText = EnsureHeaderLabel(headerRect, "GoldText", new Vector2(0.02f, 0.5f),
+            TextAlignmentOptions.MidlineLeft, isGold: true);
+        TextMeshProUGUI anvilInfoText = EnsureHeaderLabel(headerRect, "AnvilInfoText", new Vector2(0.98f, 0.5f),
+            TextAlignmentOptions.MidlineRight, isGold: false);
+
+        EnsureHudBindings(goldText, anvilInfoText);
     }
 
-    private void ReparentToHeader(TextMeshProUGUI text, RectTransform headerRect, Vector2 anchor, TextAlignmentOptions alignment)
+    private TextMeshProUGUI EnsureHeaderLabel(RectTransform headerRect, string objectName, Vector2 anchor,
+        TextAlignmentOptions alignment, bool isGold)
+    {
+        Transform existing = headerRect.Find(objectName);
+        TextMeshProUGUI text;
+
+        if (existing == null)
+        {
+            GameObject labelObject = new GameObject(objectName, typeof(RectTransform));
+            labelObject.transform.SetParent(headerRect, false);
+            text = labelObject.AddComponent<TextMeshProUGUI>();
+        }
+        else
+        {
+            text = existing.GetComponent<TextMeshProUGUI>();
+            if (text == null)
+                text = existing.gameObject.AddComponent<TextMeshProUGUI>();
+        }
+
+        ReparentToHeader(text, headerRect, anchor, alignment, isGold);
+        return text;
+    }
+
+    private void EnsureHudBindings(TextMeshProUGUI goldText, TextMeshProUGUI anvilInfoText)
+    {
+        if (!Application.isPlaying) return;
+
+        EconomyManager economy = FindFirstObjectByType<EconomyManager>();
+        if (economy != null && goldText != null)
+        {
+            GoldDisplayUI goldDisplay = GetComponent<GoldDisplayUI>();
+            if (goldDisplay == null)
+                goldDisplay = gameObject.AddComponent<GoldDisplayUI>();
+
+            goldDisplay.Configure(economy, goldText);
+        }
+
+        if (anvilInfoText != null)
+        {
+            AnvilUpgradeHandler upgradeHandler = FindFirstObjectByType<AnvilUpgradeHandler>();
+            upgradeHandler?.ConfigureHud(anvilInfoText, GetComponent<GoldDisplayUI>());
+        }
+    }
+
+    private void ReparentToHeader(TextMeshProUGUI text, RectTransform headerRect, Vector2 anchor,
+        TextAlignmentOptions alignment, bool isGold)
     {
         if (text == null || headerRect == null) return;
 
@@ -100,10 +168,24 @@ public class GameUILayout : MonoBehaviour
         rect.anchorMax = anchor;
         rect.pivot = new Vector2(anchor.x, 0.5f);
         rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(480f, 80f);
+        rect.sizeDelta = new Vector2(isGold ? 520f : 480f, 80f);
         text.alignment = alignment;
-        text.color = text.name.Contains("Gold") ? UITheme.GoldText : UITheme.BodyText;
-        text.fontSize = text.name.Contains("Gold") ? 34f : 26f;
+
+        if (isGold)
+        {
+            text.color = UITheme.GoldText;
+            text.fontSize = 38f;
+            text.fontStyle = FontStyles.Bold;
+            text.outlineWidth = 0.22f;
+            text.outlineColor = new Color(0f, 0f, 0f, 0.75f);
+        }
+        else
+        {
+            text.color = UITheme.BodyText;
+            text.fontSize = 26f;
+            text.fontStyle = FontStyles.Normal;
+        }
+
         text.raycastTarget = false;
     }
 
@@ -151,19 +233,7 @@ public class GameUILayout : MonoBehaviour
             AnchorTopCenter(forgeButton, UITheme.ForgeButtonTopOffset, new Vector2(920f, UITheme.ForgeButtonHeight));
         }
 
-        RectTransform forgeTimer = FindChild<RectTransform>("ForgeTimerText");
-        if (forgeTimer != null)
-        {
-            AnchorTopCenter(forgeTimer, UITheme.ForgeTimerTopOffset, new Vector2(920f, UITheme.ForgeTimerHeight));
-            TextMeshProUGUI timerText = forgeTimer.GetComponent<TextMeshProUGUI>();
-            if (timerText != null)
-            {
-                timerText.color = UITheme.MutedText;
-                timerText.fontSize = 26f;
-                timerText.alignment = TextAlignmentOptions.Center;
-                timerText.raycastTarget = false;
-            }
-        }
+        SetActiveIfExists("ForgeTimerText", false);
 
         RectTransform sellButton = FindChild<RectTransform>("SellButton");
         if (sellButton != null)
@@ -255,6 +325,27 @@ public class GameUILayout : MonoBehaviour
 
         if (GetComponent<ForgeItemPromptUI>() == null)
             gameObject.AddComponent<ForgeItemPromptUI>();
+    }
+
+    private void EnsureForgeButtonProgress()
+    {
+        if (!Application.isPlaying) return;
+
+        ForgeButtonHandler forgeHandler = FindFirstObjectByType<ForgeButtonHandler>();
+        forgeHandler?.EnsureProgressVisual();
+    }
+
+    private void EnsureTechTreePanel()
+    {
+        if (!Application.isPlaying) return;
+
+        TechTreePanelUI techPanel = GetComponent<TechTreePanelUI>();
+        if (techPanel == null)
+            techPanel = gameObject.AddComponent<TechTreePanelUI>();
+
+        TechTreeManager techTreeManager = FindFirstObjectByType<TechTreeManager>();
+        EconomyManager economy = FindFirstObjectByType<EconomyManager>();
+        techPanel.Configure(techTreeManager, economy);
     }
 
     private T FindChild<T>(string objectName) where T : Component

@@ -6,7 +6,6 @@ using UnityEngine.UI;
 // FORGE butonuna basildiginda sure bekler, sonra rastgele item uretir ve envantere ekler.
 public class ForgeButtonHandler : MonoBehaviour
 {
-    [SerializeField] private TextMeshProUGUI forgeTimerText;
     [SerializeField] private Button forgeButton;
     [SerializeField] private ItemDatabase itemDatabase;
     [SerializeField] private SaveManager saveManager;
@@ -16,12 +15,62 @@ public class ForgeButtonHandler : MonoBehaviour
 
     private bool isForging;
     private Coroutine blockedMessageCoroutine;
+    private TextMeshProUGUI forgeButtonLabel;
+    private Image forgeButtonImage;
+    private Image forgeProgressFill;
+    private string defaultForgeButtonLabel = string.Empty;
 
     /// <summary>Item havuzu referansi; baska sistemler icin paylasilir.</summary>
     public ItemDatabase ItemDatabase => itemDatabase;
 
     /// <summary>Forge devam ediyor mu; satis bu surede engellenir.</summary>
     public bool IsForging => isForging;
+
+    /// <summary>Buton uzerinde ilerleme cubugu olusturur (GameUILayout tarafindan cagrilir).</summary>
+    public void EnsureProgressVisual()
+    {
+        if (forgeButton == null)
+            forgeButton = GetComponent<Button>();
+
+        if (forgeButtonImage == null)
+            forgeButtonImage = forgeButton != null ? forgeButton.GetComponent<Image>() : null;
+
+        if (forgeButtonLabel == null && forgeButton != null)
+            forgeButtonLabel = forgeButton.GetComponentInChildren<TextMeshProUGUI>();
+
+        if (forgeButtonLabel != null && string.IsNullOrEmpty(defaultForgeButtonLabel))
+            defaultForgeButtonLabel = GameTexts.ForgeButton;
+
+        Transform buttonTransform = forgeButton != null ? forgeButton.transform : transform;
+        Transform existingFill = buttonTransform.Find("ForgeProgressFill");
+
+        if (existingFill == null)
+        {
+            GameObject fillObject = new GameObject("ForgeProgressFill", typeof(RectTransform), typeof(Image));
+            fillObject.transform.SetParent(buttonTransform, false);
+            fillObject.transform.SetAsFirstSibling();
+
+            RectTransform fillRect = fillObject.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = new Vector2(4f, 4f);
+            fillRect.offsetMax = new Vector2(-4f, -4f);
+
+            forgeProgressFill = fillObject.GetComponent<Image>();
+            forgeProgressFill.color = UITheme.ForgeProgressFill;
+            forgeProgressFill.type = Image.Type.Filled;
+            forgeProgressFill.fillMethod = Image.FillMethod.Horizontal;
+            forgeProgressFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            forgeProgressFill.fillAmount = 0f;
+            forgeProgressFill.raycastTarget = false;
+        }
+        else
+        {
+            forgeProgressFill = existingFill.GetComponent<Image>();
+        }
+
+        SetForgeVisualProgress(0f, false);
+    }
 
     /// <summary>Buton OnClick olayina baglanir.</summary>
     public void OnForgeClicked()
@@ -36,6 +85,7 @@ public class ForgeButtonHandler : MonoBehaviour
 
         EnsureAutomationManager();
         EnsureInventoryManager();
+        EnsureProgressVisual();
 
         if (automationManager != null && automationManager.IsWaitingForUserDecision)
             return false;
@@ -66,6 +116,10 @@ public class ForgeButtonHandler : MonoBehaviour
 
     private void Start()
     {
+        if (forgeButton == null)
+            forgeButton = GetComponent<Button>();
+
+        EnsureProgressVisual();
         EnsureInventoryManager();
         EnsureAutomationManager();
         RefreshForgeButtonState();
@@ -92,28 +146,39 @@ public class ForgeButtonHandler : MonoBehaviour
 
     private IEnumerator ForgeRoutine()
     {
+        CancelStatusMessage();
         isForging = true;
         RefreshForgeButtonState();
 
         float duration = anvilManager != null ? anvilManager.GetForgeDuration() : 3f;
-        float remaining = duration;
+        float elapsed = 0f;
 
-        while (remaining > 0f)
+        SetForgeVisualProgress(0f, true);
+
+        while (elapsed < duration)
         {
-            if (forgeTimerText != null)
-                forgeTimerText.text = GameTexts.Forging(GameTexts.FormatDuration(remaining));
+            elapsed += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            int percent = Mathf.Min(99, Mathf.RoundToInt(progress * 100f));
+
+            SetForgeVisualProgress(progress, true);
+
+            if (forgeButtonLabel != null)
+                forgeButtonLabel.text = GameTexts.ForgingPercent(percent);
 
             yield return null;
-            remaining -= Time.deltaTime;
         }
 
-        if (forgeTimerText != null)
-            forgeTimerText.text = string.Empty;
+        SetForgeVisualProgress(1f, true);
+
+        if (forgeButtonLabel != null)
+            forgeButtonLabel.text = GameTexts.ForgingPercent(100);
 
         ItemData forgedItem = itemDatabase.GetRandomItemForEra(GetCurrentEra());
         if (forgedItem == null)
         {
             isForging = false;
+            SetForgeVisualProgress(0f, false);
             RefreshForgeButtonState();
             yield break;
         }
@@ -128,9 +193,37 @@ public class ForgeButtonHandler : MonoBehaviour
         saveManager?.SaveGame();
 
         isForging = false;
+        SetForgeVisualProgress(0f, false);
         RefreshForgeButtonState();
 
+        if (automationManager != null)
+        {
+            string feedback = automationManager.ConsumePendingForgeFeedback();
+            bool willAutoChain = automationManager.AutoForgeEnabled &&
+                                 !automationManager.IsWaitingForUserDecision;
+
+            if (!string.IsNullOrEmpty(feedback) && !willAutoChain)
+                ShowForgeStatus(feedback, 0.7f);
+        }
+
         automationManager?.NotifyForgeCompleted();
+    }
+
+    private void SetForgeVisualProgress(float progress, bool forging)
+    {
+        if (forgeProgressFill != null)
+        {
+            forgeProgressFill.gameObject.SetActive(forging);
+            forgeProgressFill.fillAmount = progress;
+        }
+
+        if (forgeButtonImage != null)
+            forgeButtonImage.color = forging ? UITheme.ForgeButtonForging : UITheme.ForgeButton;
+
+        if (!forging && forgeButtonLabel != null)
+            forgeButtonLabel.text = string.IsNullOrEmpty(defaultForgeButtonLabel)
+                ? GameTexts.ForgeButton
+                : defaultForgeButtonLabel;
     }
 
     /// <summary>Forge baslatilabilir mi (envanter veya auto-sell durumuna gore).</summary>
@@ -160,15 +253,33 @@ public class ForgeButtonHandler : MonoBehaviour
         blockedMessageCoroutine = StartCoroutine(StatusMessageRoutine(message));
     }
 
-    private IEnumerator StatusMessageRoutine(string message)
+    /// <summary>Forge bolgesinde kisa durum mesaji gosterir.</summary>
+    public void ShowForgeStatus(string message, float durationSeconds = 1.5f)
     {
-        if (forgeTimerText != null)
-            forgeTimerText.text = message;
+        if (isForging) return;
 
-        yield return new WaitForSeconds(2f);
+        CancelStatusMessage();
+        blockedMessageCoroutine = StartCoroutine(StatusMessageRoutine(message, durationSeconds));
+    }
 
-        if (!isForging && forgeTimerText != null)
-            forgeTimerText.text = string.Empty;
+    private void CancelStatusMessage()
+    {
+        if (blockedMessageCoroutine == null) return;
+        StopCoroutine(blockedMessageCoroutine);
+        blockedMessageCoroutine = null;
+    }
+
+    private IEnumerator StatusMessageRoutine(string message, float durationSeconds = 2f)
+    {
+        EnsureProgressVisual();
+
+        if (forgeButtonLabel != null)
+            forgeButtonLabel.text = message;
+
+        yield return new WaitForSeconds(durationSeconds);
+
+        if (!isForging)
+            SetForgeVisualProgress(0f, false);
 
         blockedMessageCoroutine = null;
     }
@@ -192,7 +303,11 @@ public class ForgeButtonHandler : MonoBehaviour
 
     private IEnumerator AddItemWithoutAutomation(ItemData forgedItem)
     {
-        if (inventoryManager == null || !inventoryManager.TryAddItem(forgedItem))
+        if (inventoryManager == null) yield break;
+
+        if (inventoryManager.ContainsItem(forgedItem))
+            ShowStatusMessage(GameTexts.ItemAlreadyInInventory(forgedItem.ItemName));
+        else if (!inventoryManager.TryAddItem(forgedItem))
             ShowStatusMessage(GameTexts.InventoryFull);
 
         yield break;

@@ -70,6 +70,6 @@ public static class ItemComparer
             ? anvilManager.GetScaledSellPrice(item.SellPrice)
             : item.SellPrice;
 
-        return $"{item.ItemName}\nSAL {item.BaseAttack:0}  SAV {item.BaseDefense:0}  Sev. {item.Tier}  Satış {sellPrice:0}g";
+        return GameTexts.ItemStats(item.ItemName, item.BaseAttack, item.BaseDefense, item.Tier, sellPrice);
     }
 }

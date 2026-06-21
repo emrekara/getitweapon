@@ -43,6 +43,11 @@ public class OfflineProgressManager : MonoBehaviour
 
         elapsed = Math.Min(elapsed, maxOfflineSeconds);
         double goldPerSecond = anvilManager != null ? anvilManager.GetOfflineGoldPerSecond() : 1;
+
+        TechTreeManager techTreeManager = FindFirstObjectByType<TechTreeManager>();
+        if (techTreeManager != null)
+            goldPerSecond *= techTreeManager.GetOfflineGoldMultiplier();
+
         double earnedGold = elapsed * goldPerSecond;
         if (earnedGold <= 0) yield break;
 

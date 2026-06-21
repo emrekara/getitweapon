@@ -15,13 +15,42 @@ public class ForgeAutomationManager : MonoBehaviour
 
     private bool autoForgeEnabled;
     private bool autoSellEnabled;
+    private bool autoSellTierFilterEnabled;
+    private int autoSellMaxTier = 1;
+    private bool autoSellEraFilterEnabled;
+    private int autoSellMaxEraIndex;
     private bool isWaitingForUserDecision;
+    private string pendingForgeFeedback;
 
     /// <summary>Auto-forge acik mi.</summary>
     public bool AutoForgeEnabled => autoForgeEnabled;
 
     /// <summary>Auto-sell acik mi.</summary>
     public bool AutoSellEnabled => autoSellEnabled;
+
+    /// <summary>Tier filtresi acik mi.</summary>
+    public bool AutoSellTierFilterEnabled => autoSellTierFilterEnabled;
+
+    /// <summary>Otomatik satilabilecek maksimum tier.</summary>
+    public int AutoSellMaxTier => autoSellMaxTier;
+
+    /// <summary>Cag filtresi acik mi.</summary>
+    public bool AutoSellEraFilterEnabled => autoSellEraFilterEnabled;
+
+    /// <summary>Otomatik satilabilecek maksimum cag indeksi.</summary>
+    public int AutoSellMaxEraIndex => autoSellMaxEraIndex;
+
+    /// <summary>Tier filtresi bir adim artirilabilir mi.</summary>
+    public bool CanIncreaseAutoSellMaxTier => autoSellMaxTier < AutoSellFilter.MaxTier;
+
+    /// <summary>Tier filtresi bir adim azaltilabilir mi.</summary>
+    public bool CanDecreaseAutoSellMaxTier => autoSellMaxTier > AutoSellFilter.MinTier;
+
+    /// <summary>Cag filtresi bir adim artirilabilir mi.</summary>
+    public bool CanIncreaseAutoSellMaxEra => autoSellMaxEraIndex < AutoSellFilter.EraOrder.Length - 1;
+
+    /// <summary>Cag filtresi bir adim azaltilabilir mi.</summary>
+    public bool CanDecreaseAutoSellMaxEra => autoSellMaxEraIndex > 0;
 
     /// <summary>Kullanici upgrade sorusuna cevap veriyor mu.</summary>
     public bool IsWaitingForUserDecision => isWaitingForUserDecision;
@@ -49,7 +78,25 @@ public class ForgeAutomationManager : MonoBehaviour
         if (forgedItem == null)
             yield break;
 
+        if (inventoryManager != null && inventoryManager.ContainsItem(forgedItem))
+        {
+            if (autoSellEnabled)
+                SellForgedItem(forgedItem);
+            else
+                QueueForgeFeedback(GameTexts.ItemAlreadyInInventory(forgedItem.ItemName));
+
+            yield break;
+        }
+
         if (!autoSellEnabled)
+        {
+            if (inventoryManager != null && !inventoryManager.TryAddItem(forgedItem))
+                yield break;
+
+            yield break;
+        }
+
+        if (!PassesAutoSellFilter(forgedItem))
         {
             if (inventoryManager != null && !inventoryManager.TryAddItem(forgedItem))
                 yield break;
@@ -59,36 +106,57 @@ public class ForgeAutomationManager : MonoBehaviour
 
         if (inventoryManager == null)
         {
-            TrySellItem(forgedItem);
+            SellForgedItem(forgedItem);
             yield break;
         }
 
         if (inventoryManager.UsedSlotCount == 0)
         {
-            inventoryManager.TryAddItem(forgedItem);
+            if (inventoryManager.TryAddItem(forgedItem))
+                ShowItemAddedFeedback(forgedItem);
             yield break;
         }
 
         ItemData referenceItem = inventoryManager.GetBestReferenceItem();
         if (referenceItem == null)
         {
-            inventoryManager.TryAddItem(forgedItem);
-            yield break;
-        }
-
-        if (ItemComparer.IsStrictlyWorse(forgedItem, referenceItem))
-        {
-            TrySellItem(forgedItem);
+            if (inventoryManager.TryAddItem(forgedItem))
+                ShowItemAddedFeedback(forgedItem);
             yield break;
         }
 
         bool inventoryFull = inventoryManager.IsFull;
-        if (!ItemComparer.ShouldPromptUser(forgedItem, referenceItem, inventoryFull))
+
+        if (ItemComparer.IsStrictlyWorse(forgedItem, referenceItem))
         {
-            TrySellItem(forgedItem);
+            SellForgedItem(forgedItem);
             yield break;
         }
 
+        if (ItemComparer.HasAnyStatHigher(forgedItem, referenceItem))
+        {
+            yield return PromptKeepOrSell(forgedItem, referenceItem, inventoryFull);
+            yield break;
+        }
+
+        // Esit veya farkli tipte item: bos slot varsa envantere al.
+        if (!inventoryFull && inventoryManager.TryAddItem(forgedItem))
+        {
+            ShowItemAddedFeedback(forgedItem);
+            yield break;
+        }
+
+        if (inventoryFull && ItemComparer.AreAllStatsEqual(forgedItem, referenceItem))
+        {
+            yield return PromptKeepOrSell(forgedItem, referenceItem, inventoryFull);
+            yield break;
+        }
+
+        SellForgedItem(forgedItem);
+    }
+
+    private IEnumerator PromptKeepOrSell(ItemData forgedItem, ItemData referenceItem, bool inventoryFull)
+    {
         if (forgeItemPromptUI == null)
         {
             TryKeepForgedItem(forgedItem);
@@ -103,13 +171,46 @@ public class ForgeAutomationManager : MonoBehaviour
         if (keepNewItem)
             TryKeepForgedItem(forgedItem);
         else
-            TrySellItem(forgedItem);
+            SellForgedItem(forgedItem);
+    }
+
+    /// <summary>Forge sonrasi gosterilecek kisa mesaji alir ve temizler.</summary>
+    public string ConsumePendingForgeFeedback()
+    {
+        string message = pendingForgeFeedback;
+        pendingForgeFeedback = null;
+        return message;
+    }
+
+    private void QueueForgeFeedback(string message)
+    {
+        if (!string.IsNullOrEmpty(message))
+            pendingForgeFeedback = message;
+    }
+
+    private void SellForgedItem(ItemData item)
+    {
+        double sellGold = TrySellItem(item);
+        if (sellGold > 0)
+            QueueForgeFeedback(GameTexts.AutoSoldFeedback(sellGold));
+    }
+
+    private void ShowItemAddedFeedback(ItemData item)
+    {
+        if (item == null) return;
+        QueueForgeFeedback(GameTexts.ItemAddedToInventory(item.ItemName));
     }
 
     /// <summary>Yeni item'i envantere alir; gerekirse zayif slot satarak yer acar.</summary>
     private bool TryKeepForgedItem(ItemData forgedItem)
     {
         if (inventoryManager == null || forgedItem == null) return false;
+
+        if (inventoryManager.ContainsItem(forgedItem))
+        {
+            TrySellItem(forgedItem);
+            return true;
+        }
 
         if (inventoryManager.TryAddItem(forgedItem))
         {
@@ -162,17 +263,92 @@ public class ForgeAutomationManager : MonoBehaviour
         saveManager?.SaveGame();
     }
 
+    /// <summary>Tier filtresini ac/kapa.</summary>
+    public void SetAutoSellTierFilter(bool enabled)
+    {
+        if (autoSellTierFilterEnabled == enabled) return;
+
+        autoSellTierFilterEnabled = enabled;
+        NotifySettingsChanged();
+        saveManager?.SaveGame();
+    }
+
+    /// <summary>Maksimum auto-sell tier degerini ayarlar.</summary>
+    public void SetAutoSellMaxTier(int maxTier)
+    {
+        int clamped = Mathf.Clamp(maxTier, AutoSellFilter.MinTier, AutoSellFilter.MaxTier);
+        if (autoSellMaxTier == clamped) return;
+
+        autoSellMaxTier = clamped;
+        NotifySettingsChanged();
+        saveManager?.SaveGame();
+    }
+
+    /// <summary>Cag filtresini ac/kapa.</summary>
+    public void SetAutoSellEraFilter(bool enabled)
+    {
+        if (autoSellEraFilterEnabled == enabled) return;
+
+        autoSellEraFilterEnabled = enabled;
+        NotifySettingsChanged();
+        saveManager?.SaveGame();
+    }
+
+    /// <summary>Maksimum auto-sell cag indeksini ayarlar.</summary>
+    public void SetAutoSellMaxEraIndex(int eraIndex)
+    {
+        int clamped = Mathf.Clamp(eraIndex, 0, AutoSellFilter.EraOrder.Length - 1);
+        if (autoSellMaxEraIndex == clamped) return;
+
+        autoSellMaxEraIndex = clamped;
+        NotifySettingsChanged();
+        saveManager?.SaveGame();
+    }
+
+    /// <summary>Tier filtresini sinirli aralikta bir adim kaydirir (dongu yok).</summary>
+    /// <param name="delta">+1 veya -1.</param>
+    public void AdjustAutoSellMaxTier(int delta)
+    {
+        if (delta == 0) return;
+        SetAutoSellMaxTier(autoSellMaxTier + delta);
+    }
+
+    /// <summary>Cag filtresini sinirli aralikta bir adim kaydirir (dongu yok).</summary>
+    /// <param name="delta">+1 veya -1.</param>
+    public void AdjustAutoSellMaxEraIndex(int delta)
+    {
+        if (delta == 0) return;
+        SetAutoSellMaxEraIndex(autoSellMaxEraIndex + delta);
+    }
+
     /// <summary>Kayit icin auto-forge durumunu dondurur.</summary>
     public bool ExportAutoForgeEnabled() => autoForgeEnabled;
 
     /// <summary>Kayit icin auto-sell durumunu dondurur.</summary>
     public bool ExportAutoSellEnabled() => autoSellEnabled;
 
+    /// <summary>Kayit icin tier filtresi durumunu dondurur.</summary>
+    public bool ExportAutoSellTierFilterEnabled() => autoSellTierFilterEnabled;
+
+    /// <summary>Kayit icin maksimum tier degerini dondurur.</summary>
+    public int ExportAutoSellMaxTier() => autoSellMaxTier;
+
+    /// <summary>Kayit icin cag filtresi durumunu dondurur.</summary>
+    public bool ExportAutoSellEraFilterEnabled() => autoSellEraFilterEnabled;
+
+    /// <summary>Kayit icin maksimum cag indeksini dondurur.</summary>
+    public int ExportAutoSellMaxEraIndex() => autoSellMaxEraIndex;
+
     /// <summary>Kayittan otomasyon ayarlarini yukler.</summary>
-    public void ImportState(bool forgeEnabled, bool sellEnabled)
+    public void ImportState(bool forgeEnabled, bool sellEnabled, bool tierFilterEnabled, int maxTier,
+        bool eraFilterEnabled, int maxEraIndex)
     {
         autoForgeEnabled = forgeEnabled;
         autoSellEnabled = sellEnabled;
+        autoSellTierFilterEnabled = tierFilterEnabled;
+        autoSellMaxTier = Mathf.Clamp(maxTier, AutoSellFilter.MinTier, AutoSellFilter.MaxTier);
+        autoSellEraFilterEnabled = eraFilterEnabled;
+        autoSellMaxEraIndex = Mathf.Clamp(maxEraIndex, 0, AutoSellFilter.EraOrder.Length - 1);
         NotifySettingsChanged();
     }
 
@@ -182,10 +358,18 @@ public class ForgeAutomationManager : MonoBehaviour
         return autoSellEnabled;
     }
 
-    /// <summary>Item'i aninda satar; gold artirir.</summary>
-    public bool TrySellItem(ItemData item)
+    /// <summary>Item auto-sell filtresinden gecer mi.</summary>
+    public bool PassesAutoSellFilter(ItemData item)
     {
-        if (item == null || economyManager == null) return false;
+        return AutoSellFilter.PassesFilter(item, autoSellTierFilterEnabled, autoSellMaxTier,
+            autoSellEraFilterEnabled, autoSellMaxEraIndex);
+    }
+
+    /// <summary>Item'i aninda satar; gold artirir.</summary>
+    /// <returns>Kazanilan gold; basarisizsa 0.</returns>
+    public double TrySellItem(ItemData item)
+    {
+        if (item == null || economyManager == null) return 0;
 
         double sellGold = anvilManager != null
             ? anvilManager.GetScaledSellPrice(item.SellPrice)
@@ -196,7 +380,7 @@ public class ForgeAutomationManager : MonoBehaviour
         if (goldDisplayUI != null)
             goldDisplayUI.RefreshDisplay();
 
-        return true;
+        return sellGold;
     }
 
     private void SellStrictlyWorseInventoryItems(ItemData keeper, int keeperSlot)

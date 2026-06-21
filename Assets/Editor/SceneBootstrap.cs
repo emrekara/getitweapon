@@ -73,6 +73,9 @@ public static class SceneBootstrap
         DestroyIfExists(canvas, "SelectedItemText");
         DestroyIfExists(canvas, "Background");
         DestroyIfExists(canvas, "HeaderPanel");
+        DestroyIfExists(canvas, "AutoForgePanel");
+        DestroyIfExists(canvas, "TechTreeToggle");
+        DestroyIfExists(canvas, "TechTreePanel");
     }
 
     private static void DestroyIfExists(Transform parent, string objectName)

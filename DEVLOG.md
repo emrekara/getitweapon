@@ -8,11 +8,11 @@
 
 | Alan | Değer |
 |------|-------|
-| **Aşama** | 13 — Türkçe UI + forge layout düzeltmesi ✅ |
-| **Son çalışan özellik** | Türkçe metinler (`GameTexts`), OTO DÖV/SAT, akıllı auto-sell popup, forge timer/buton çakışması giderildi |
+| **Aşama** | 17 — Tech araştırma timer ✅ (Aşama 18 öncesi UI + envanter düzeltmeleri) |
+| **Son çalışan özellik** | Forge butonunda % ilerleme; OTO SAT akıllı filtre; envanterde tip başına tek item |
 | **Aktif sahne** | `Assets/Scenes/SampleScene.unity` |
-| **Sonraki hedef** | i18n altyapısı, tech tree iskelet, auto-sell filtresi (tier/era) |
-| **Henüz yok** | Çoklu dil (i18n), tech tree, REST remote config |
+| **Sonraki hedef** | Aşama 18 — Hammers meta para |
+| **Henüz yok** | Hammers, minigame, tech dallanma, remote config |
 
 ### Sistem Haritası (AI için hızlı referans)
 
@@ -21,10 +21,27 @@ EconomyManager (sahne objesi)
   ├── CurrentGold, AddGold(), TrySpendGold()
   └── Inspector: startingGold
 
-GameTexts (static — simdilik Turkce, ileride i18n)
-  ├── Buton/uyari/popup metinleri
-  ├── FormatDuration, FormatOfflineDuration, GetEraDisplayName
+GameTexts (LocalizationManager facade)
+  ├── LocalizationKey enum + TR/EN tablolar
+  ├── FormatDuration, GetEraDisplayName vb.
   └── GoldAmount, AnvilInfo, OfflineWelcome vb.
+
+LocalizationManager (static)
+  ├── SetLanguage(tr/en), OnLanguageChanged
+  └── TurkishLocalization / EnglishLocalization tablolari
+
+AutoSellFilter (static)
+  ├── EraOrder, PassesFilter(tier/era)
+  └── ForgeAutomationManager filtre entegrasyonu
+
+TechTreeManager (SaveManager objesi, runtime)
+  ├── Tek slot arastirma: gold + timer → Sv+1
+  ├── techResearchNodeId, techResearchEndsAt (save)
+  ├── Offline/load sonrasi TryCompleteResearchIfReady
+  └── GetForgeSpeedMultiplier, GetUpgradeCostMultiplier, GetOfflineGoldMultiplier
+
+TechTreePanelUI (Canvas, runtime)
+  └── ARAŞTIRMA butonu + dugum listesi paneli
 
 GoldDisplayUI (GoldText üzerinde)
   ├── EconomyManager + TextMeshProUGUI referansı
@@ -37,11 +54,13 @@ ItemData (ScriptableObject)
 ForgeButtonHandler (ForgeButton üzerinde)
   ├── itemDatabase.GetRandomItemForEra(CurrentEra), anvilManager, inventoryManager
   ├── ForgeAutomationManager.ProcessForgedItem() coroutine
-  ├── Envanter dolu → FORGE kilitli + "Envanter dolu!"
+  ├── Buton uzerinde % ilerleme + sari fill (ForgeTimerText kaldirildi)
+  ├── Durum mesajlari (envanter dolu vb.) forge buton etiketinde
   └── Coroutine ile forge + SaveGame
 
 ForgeAutomationManager (SaveManager objesi, runtime)
   ├── autoForgeEnabled, autoSellEnabled (save)
+  ├── autoSellTierFilter, autoSellEraFilter (save)
   ├── ProcessForgedItem: otomatik sat / popup / envantere ekle
   ├── IsWaitingForUserDecision → auto-forge duraklat
   └── TryKeepForgedItem, SellStrictlyWorseInventoryItems
@@ -52,6 +71,8 @@ ItemComparer (static)
 
 InventoryManager (SaveManager objesi, runtime)
   ├── 8 slot, itemIndices[] (-1 = bos), selectedSlot
+  ├── Tip basina tek item: ContainsItem, TryAddItem reddeder
+  ├── ImportState: eski kayittaki duplicate slotlari temizler
   ├── TryAddItem / TryRemoveSelected / SelectSlot
   ├── Export/Import + legacy lastItemIndex migration
   └── OnInventoryChanged, OnSlotSelected
@@ -86,7 +107,9 @@ AnvilUpgradeHandler (UpgradeButton üzerinde)
   └── OnUpgradeClicked, yetersiz gold → "Gerekli: Xg"
 
 SaveManager → GameSaveData: gold, inventoryItemIndices[], selectedInventorySlot,
-  anvilLevel, anvilUpgradeEndsAt, lastQuitTimestamp, autoForgeEnabled, autoSellEnabled
+  anvilLevel, anvilUpgradeEndsAt, lastQuitTimestamp, autoForgeEnabled, autoSellEnabled,
+  autoSellTierFilterEnabled, autoSellMaxTier, autoSellEraFilterEnabled, autoSellMaxEraIndex,
+  languageCode, techNodeLevels[], techResearchNodeId, techResearchEndsAt
   └── legacy lastItemIndex → envanter slot 0'a migrate
 
 OfflineProgressManager (sahne objesi)
@@ -95,8 +118,9 @@ OfflineProgressManager (sahne objesi)
   ├── Load sonrası offline gold + OfflineMessageText (Turkce)
   └── SaveGame() ile çift ödeme engeli
 
-Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug (gold, kayıt, missing script tarama)
+Assets/Editor/DebugSaveMenu.cs → GetItWeapon/Debug (gold, kayıt, dil, missing script tarama)
 Assets/Editor/SceneBootstrap.cs → GetItWeapon/Setup Main UI
+Assets/Editor/TechTreeBootstrap.cs → GetItWeapon/Setup Tech Tree
 
 Assets/Art/Icons/
   ├── icon_sword/axe/bow.png → Stone era
@@ -110,15 +134,17 @@ Assets/Art/Icons/
 ```
 Assets/Scripts/
 ├── Core/ (GameSaveData, SaveManager)
+├── Localization/ (LocalizationKey, LocalizationManager, TR/EN tablolar)
 ├── Economy/EconomyManager.cs
-├── Forge/ (ForgeButtonHandler, SellButtonHandler, ForgeAutomationManager, ItemComparer,
-│          ItemData, ItemDatabase, AnvilManager, AnvilUpgradeSettings)
+├── Forge/ (ForgeButtonHandler, SellButtonHandler, ForgeAutomationManager, AutoSellFilter,
+│          ItemComparer, ItemData, ItemDatabase, AnvilManager, AnvilUpgradeSettings)
+├── Tech/ (TechEffectType, TechNodeData, TechTreeDatabase, TechTreeManager)
 ├── Idle/OfflineProgressManager.cs
 ├── Inventory/InventoryManager.cs
 └── UI/ (GameTexts, GoldDisplayUI, AnvilUpgradeHandler, InventoryPanelUI, InventorySlotUI,
-         AutoForgePanelUI, ForgeItemPromptUI, GameUILayout, GameUiBootstrap, UITheme)
+         AutoForgePanelUI, ForgeItemPromptUI, TechTreePanelUI, GameUILayout, GameUiBootstrap, UITheme)
 
-Assets/Editor/DebugSaveMenu.cs, SceneBootstrap.cs
+Assets/Editor/DebugSaveMenu.cs, SceneBootstrap.cs, TechTreeBootstrap.cs
 ```
 
 ### UI Hierarchy (SampleScene)
@@ -129,9 +155,9 @@ Canvas (+ GameUiBootstrap, GameUILayout, InventoryPanelUI — runtime)
 ├── HeaderPanel
 │   ├── GoldText
 │   └── AnvilInfoText
-├── ForgeTimerText (raycastTarget kapali, butonun ustunde ayri satir)
-├── ForgeButton (+ ForgeButtonHandler)
-├── AutoForgePanel (runtime: OTO DÖV / OTO SAT)
+├── ForgeButton (+ ForgeButtonHandler, % ilerleme fill)
+├── AutoForgePanel (runtime: OTO DÖV / OTO SAT / tier-çağ filtre ‹ ›)
+├── TechTreeToggle + TechTreePanel (runtime)
 ├── InventoryPanel (4x8 grid, runtime)
 ├── SelectedItemText
 ├── UpgradeButton (+ AnvilUpgradeHandler)
@@ -147,12 +173,10 @@ EventSystem
 
 ```
 Header (112px)
-ForgeTimerText  → top 120, h 32
+ForgeButton     → top 120, h 80  (% + fill)
 [12px gap]
-ForgeButton     → top 164, h 80
-[12px gap]
-AutoForgePanel  → top 256, h 96
-Envanter        → topInset 364
+AutoForgePanel  → top 212, h 200
+Envanter        → topInset 424
 ```
 
 ---
@@ -180,12 +204,142 @@ Envanter        → topInset 364
 | 11 | Auto-forge / Auto-sell toggle | ✅ | OTO DÖV / OTO SAT, save alanları |
 | 12 | Akıllı auto-sell + popup | ✅ | Stat karsilastirma, TUT/YENİSİNİ SAT |
 | 13 | Türkçe UI + forge layout | ✅ | GameTexts, item isimleri, timer/buton çakışması giderildi |
+| 14 | Auto-sell filtresi (tier/era) | ✅ | Filtre toggle + cycle, save alanları |
+| 15 | i18n iskelet (TR/EN) | ✅ | LocalizationManager, tablolar, dil kaydı |
+| 16 | Tech tree iskelet | ✅ | 3 düğüm, Anvil/Offline entegrasyonu, panel UI |
+| 17 | Tech araştırma timer | ✅ | Gold + süre, tek slot, save/load, offline tamamlama |
 
 ---
 
 ## Commit Kayıtları
 
 <!-- Yeni kayıtlar EN ÜSTE eklenir (en yeni önce). -->
+
+### [2026-06-21] Forge UI sadeleştirme, OTO SAT düzeltmesi, envanter tekilliği
+
+**Aşama:** 17 sonrası — Aşama 18 öncesi polish
+
+**Ne yapıldı:**
+- **Forge UI:** `ForgeTimerText` kaldırıldı; ilerleme yalnızca butonda `DÖV %N` + sarı fill.
+- **OTO SAT:** Eşit statlı item boş slot varken satılmıyordu — düzeltildi; geri bildirim kuyruğu forge sırasında timer'ı ezmiyor.
+- **Filtre UI:** Tier/çağ `‹ ›` okları; sınırda pasif; etiket `Sev.1–4 · ≤Sev.2 (2/4)` formatı.
+- **Gold header:** Runtime `GoldText` + sarı outline; `GoldDisplayUI.Configure()`.
+- **Envanter tekilliği:** Aynı item tipinden (SO) yalnızca bir adet; duplicate forge OTO SAT ile satılır.
+- **i18n:** `ItemAlreadyInInventory`, `ForgingPercent`, `FormatForgeCountdown` anahtarları.
+- **Aşama 14–17** (bu commit'e dahil önceki oturumlar): auto-sell filtresi, i18n iskelet, tech tree, araştırma timer.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Inventory/InventoryManager.cs`
+- `Assets/Scripts/Forge/ForgeButtonHandler.cs`, `ForgeAutomationManager.cs`
+- `Assets/Scripts/Localization/` (TR/EN anahtarlar)
+- `Assets/Scripts/UI/GameUILayout.cs`, `UITheme.cs`, `GameTexts.cs`, `GoldDisplayUI.cs`, `AutoForgePanelUI.cs`
+- `Assets/Scripts/Tech/`, `Assets/Scripts/Forge/AutoSellFilter.cs`
+- `Assets/Scripts/Core/GameSaveData.cs`, `SaveManager.cs`
+- `Assets/Editor/TechTreeBootstrap.cs`, `DebugSaveMenu.cs`
+- `Assets/Scenes/SampleScene.unity`
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- Play'de UI runtime kurulur; `ForgeTimerText` gizli kalır.
+- İsteğe bağlı: `GetItWeapon → Setup Tech Tree`, `Setup Main UI`.
+
+**Test kriteri:**
+- OTO DÖV: butonda % artar, üstte "Dövülüyor" yazısı yok.
+- Envanterde Taş Balta varken tekrar Taş Balta dövülür → OTO SAT ile satılır, ikinci slot oluşmaz.
+- OTO SAT kapalı + duplicate → butonda "Zaten envanterde: …" mesajı.
+- Eski kayıtta duplicate slot varsa yüklemede temizlenir.
+
+**AI bağlam notları:**
+- Sıradaki: **Aşama 18 — Hammers** meta para.
+- Item isimleri hâlâ SO string (i18n değil).
+- `ForgeTimerText` sahne objesi duruyor ama gizli; ileride tamamen silinebilir.
+
+---
+
+### [2026-06-21] Tech araştırma timer — gold + süre, tek slot
+
+**Aşama:** 17 — Tech araştırma timer
+
+**Ne yapıldı:**
+- Anlık MAKS yükseltme kaldırıldı: her seviye **gold + araştırma süresi** gerektirir.
+- **Tek araştırma slotu:** bir düğüm araştırılırken diğerleri kilitli.
+- `TechNodeData`: `baseResearchDurationSeconds`, `durationScalePerLevel`, `GetResearchDurationSeconds()`.
+- `TechTreeManager`: `TryStartResearch`, `TryCompleteResearchIfReady`, offline/load tamamlama.
+- Save: `techResearchNodeId`, `techResearchEndsAt`.
+- UI: buton `ARAŞTIR (Xg, Ys)`; devam ederken `ARAŞTIRILIYOR …`; panel üstte (`SetAsLastSibling`).
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Tech/TechNodeData.cs`, `TechTreeManager.cs`, `TechTreeDatabase.cs`
+- `Assets/Scripts/UI/TechTreePanelUI.cs`, `GameTexts.cs`
+- `Assets/Scripts/Localization/` (yeni anahtarlar)
+- `Assets/Scripts/Core/GameSaveData.cs`, `SaveManager.cs`
+- `Assets/Editor/TechTreeBootstrap.cs`
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- İsteğe bağlı: `GetItWeapon → Setup Tech Tree` (SO'lara süre alanları yazar).
+- Eski kayıt uyumlu; yeni save alanları varsayılan boş.
+
+**Test kriteri:**
+- ARAŞTIR → gold düşer, geri sayım başlar, süre bitince Sv+1.
+- Araştırma sürerken başka düğüm tıklanamaz.
+- Stop → süre geç → Play → araştırma tamamlanmış olur.
+- Tek seferde MAKS'a çıkılamaz.
+
+**AI bağlam notları:**
+- Varsayılan süreler test için kısa (15–20 sn); production'da remote config.
+- Sıradaki kurgu sırası: Hammers → minigame puanı → mobile UI pass.
+
+---
+
+### [2026-06-21] Auto-sell filtresi, i18n iskeleti ve tech tree
+
+**Aşama:** 14–16 — Filtre + i18n + tech tree iskeleti
+
+**Ne yapıldı:**
+- **Auto-sell filtresi:** Tier ve çağ bazlı filtre; OTO SAT açıkken yalnızca filtreye uyan zayıf item'lar otomatik satılır.
+- `AutoSellFilter` + `ForgeAutomationManager`: filtre geçmeyen item envantere alınır.
+- `AutoForgePanelUI`: 4 satır (OTO DÖV, OTO SAT, tier filtresi, çağ filtresi); › ile değer döngüsü.
+- **i18n iskelet:** `LocalizationKey`, `LocalizationManager`, TR/EN tablolar; `GameTexts` facade.
+- Dil kaydı (`languageCode`); Debug menü: Dil Türkçe / English.
+- **Tech tree iskelet:** `TechNodeData`, `TechTreeDatabase`, `TechTreeManager` (3 düğüm: forge hızı, upgrade indirimi, offline gold).
+- `TechTreePanelUI`: ARAŞTIRMA butonu + düğüm listesi; `AnvilManager` ve `OfflineProgressManager` tech çarpanları.
+- Editor: `GetItWeapon → Setup Tech Tree` (SO asset oluşturma).
+- Runtime fallback: database yoksa 3 düğüm otomatik oluşur.
+
+**Değişen / eklenen dosyalar:**
+- `Assets/Scripts/Localization/` (4 yeni)
+- `Assets/Scripts/Forge/AutoSellFilter.cs` (yeni)
+- `Assets/Scripts/Tech/` (4 yeni)
+- `Assets/Scripts/UI/TechTreePanelUI.cs` (yeni)
+- `Assets/Scripts/Forge/ForgeAutomationManager.cs`
+- `Assets/Scripts/UI/AutoForgePanelUI.cs`, `GameTexts.cs`, `UITheme.cs`, `GameUILayout.cs`
+- `Assets/Scripts/Core/GameSaveData.cs`, `SaveManager.cs`
+- `Assets/Scripts/Forge/AnvilManager.cs`, `ItemComparer.cs`
+- `Assets/Scripts/Idle/OfflineProgressManager.cs`
+- `Assets/Scripts/UI/AnvilUpgradeHandler.cs`
+- `Assets/Editor/TechTreeBootstrap.cs` (yeni)
+- `Assets/Editor/DebugSaveMenu.cs`, `SceneBootstrap.cs`
+- `DEVLOG.md`
+
+**Unity editöründe yapılanlar:**
+- İsteğe bağlı: `GetItWeapon → Setup Tech Tree` (kalıcı SO asset'ler).
+- İsteğe bağlı: `GetItWeapon → Setup Main UI` (panel yeniden kurulumu).
+- Test: Game view 9:16 veya 1080×1920.
+
+**Test kriteri:**
+- OTO SAT + tier filtresi (≤T1): yalnızca tier 1 zayıf item otomatik satılır; T2+ envantere gider.
+- Çağ filtresi: Stone dışı item filtre dışı kalır, otomatik satılmaz.
+- Debug → Dil: English → butonlar FORGE/SELL/UPGRADE olur; kayıt sonrası korunur.
+- ARAŞTIRMA paneli açılır; gold harcayarak düğüm yükseltilebilir; forge süresi kısalır.
+- Filtre ve tech seviyeleri save/load korunur.
+
+**AI bağlam notları:**
+- Item isimleri henüz lokalize değil (SO string); sadece UI metinleri i18n.
+- Tech tree runtime fallback geçici; `Setup Tech Tree` ile SO'ya geçilebilir.
+- Sıradaki: dil seçim UI, tech tree görsel ağaç, remote config.
+
+---
 
 ### [2026-06-21] Türkçe UI, auto-forge/sell ve forge layout düzeltmesi
 

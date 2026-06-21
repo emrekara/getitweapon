@@ -14,9 +14,12 @@ public class SaveManager : MonoBehaviour
     [SerializeField] private InventoryManager inventoryManager;
     [SerializeField] private ItemDatabase itemDatabase;
     [SerializeField] private ForgeAutomationManager automationManager;
+    [SerializeField] private TechTreeManager techTreeManager;
+    [SerializeField] private TechTreeDatabase techTreeDatabase;
 
     private void Awake()
     {
+        LocalizationManager.Initialize();
         EnsureSystems();
         GameUiBootstrap.EnsureApplied();
     }
@@ -65,7 +68,15 @@ public class SaveManager : MonoBehaviour
             inventoryItemIndices = inventoryManager != null ? inventoryManager.ExportItemIndices() : Array.Empty<int>(),
             selectedInventorySlot = inventoryManager != null ? inventoryManager.ExportSelectedSlot() : -1,
             autoForgeEnabled = automationManager != null && automationManager.ExportAutoForgeEnabled(),
-            autoSellEnabled = automationManager != null && automationManager.ExportAutoSellEnabled()
+            autoSellEnabled = automationManager != null && automationManager.ExportAutoSellEnabled(),
+            autoSellTierFilterEnabled = automationManager != null && automationManager.ExportAutoSellTierFilterEnabled(),
+            autoSellMaxTier = automationManager != null ? automationManager.ExportAutoSellMaxTier() : 1,
+            autoSellEraFilterEnabled = automationManager != null && automationManager.ExportAutoSellEraFilterEnabled(),
+            autoSellMaxEraIndex = automationManager != null ? automationManager.ExportAutoSellMaxEraIndex() : 0,
+            languageCode = LocalizationManager.CurrentLanguage,
+            techNodeLevels = techTreeManager != null ? techTreeManager.ExportState() : Array.Empty<TechNodeSaveEntry>(),
+            techResearchNodeId = techTreeManager != null ? techTreeManager.ExportResearchNodeId() : string.Empty,
+            techResearchEndsAt = techTreeManager != null ? techTreeManager.ExportResearchEndsAt() : 0
         };
 
         string json = JsonUtility.ToJson(data);
@@ -83,6 +94,7 @@ public class SaveManager : MonoBehaviour
         GameSaveData data = JsonUtility.FromJson<GameSaveData>(json);
         if (data == null) return;
 
+        LocalizationManager.Initialize(data.languageCode);
         economyManager.SetGold(data.gold);
 
         if (inventoryManager != null)
@@ -97,7 +109,23 @@ public class SaveManager : MonoBehaviour
             anvilManager.LoadState(data.anvilLevel, data.anvilUpgradeEndsAt);
 
         if (automationManager != null)
-            automationManager.ImportState(data.autoForgeEnabled, data.autoSellEnabled);
+        {
+            automationManager.ImportState(
+                data.autoForgeEnabled,
+                data.autoSellEnabled,
+                data.autoSellTierFilterEnabled,
+                data.autoSellMaxTier,
+                data.autoSellEraFilterEnabled,
+                data.autoSellMaxEraIndex);
+        }
+
+        if (techTreeManager != null)
+        {
+            techTreeManager.ImportState(
+                data.techNodeLevels,
+                data.techResearchNodeId,
+                data.techResearchEndsAt);
+        }
 
         if (goldDisplayUI != null)
             goldDisplayUI.RefreshDisplay();
@@ -124,6 +152,21 @@ public class SaveManager : MonoBehaviour
         if (automationManager == null)
             automationManager = gameObject.AddComponent<ForgeAutomationManager>();
 
+        if (techTreeManager == null)
+            techTreeManager = GetComponent<TechTreeManager>();
+
+        if (techTreeManager == null)
+            techTreeManager = gameObject.AddComponent<TechTreeManager>();
+
+        if (techTreeDatabase != null)
+            techTreeManager.ConfigureDatabase(techTreeDatabase);
+        else
+        {
+            TechTreeDatabase resourcesDatabase = Resources.Load<TechTreeDatabase>("MainTechTreeDatabase");
+            if (resourcesDatabase != null)
+                techTreeManager.ConfigureDatabase(resourcesDatabase);
+        }
+
         Canvas canvas = FindFirstObjectByType<Canvas>();
         if (canvas != null)
         {
@@ -138,6 +181,9 @@ public class SaveManager : MonoBehaviour
 
             if (canvas.GetComponent<GameUILayout>() == null)
                 canvas.gameObject.AddComponent<GameUILayout>();
+
+            if (canvas.GetComponent<TechTreePanelUI>() == null)
+                canvas.gameObject.AddComponent<TechTreePanelUI>();
         }
     }
 

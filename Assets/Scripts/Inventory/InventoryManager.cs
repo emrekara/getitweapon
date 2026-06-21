@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 // Envanter slotlarini tutar; forge ekleme, secim ve satis islemlerini yonetir.
@@ -94,6 +95,30 @@ public class InventoryManager : MonoBehaviour
         return GetItemInSlot(selectedSlot);
     }
 
+    /// <summary>Envanterde ayni item tipi (SO) var mi.</summary>
+    public bool ContainsItem(ItemData item)
+    {
+        return GetSlotIndexOfItem(item) >= 0;
+    }
+
+    /// <summary>Item tipinin bulundugu slot indeksi; yoksa -1.</summary>
+    public int GetSlotIndexOfItem(ItemData item)
+    {
+        EnsureInitialized();
+        if (item == null || itemDatabase == null) return -1;
+
+        int itemIndex = itemDatabase.IndexOf(item);
+        if (itemIndex < 0) return -1;
+
+        for (int i = 0; i < itemIndices.Length; i++)
+        {
+            if (itemIndices[i] == itemIndex)
+                return i;
+        }
+
+        return -1;
+    }
+
     /// <summary>Item'i ilk bos slota ekler ve o slotu secer.</summary>
     public bool TryAddItem(ItemData item)
     {
@@ -101,6 +126,8 @@ public class InventoryManager : MonoBehaviour
 
         int itemIndex = itemDatabase.IndexOf(item);
         if (itemIndex < 0) return false;
+
+        if (ContainsItemIndex(itemIndex)) return false;
 
         int freeSlot = GetFirstFreeSlotIndex();
         if (freeSlot < 0) return false;
@@ -219,18 +246,19 @@ public class InventoryManager : MonoBehaviour
             int length = Mathf.Min(savedIndices.Length, itemIndices.Length);
             for (int i = 0; i < length; i++)
                 itemIndices[i] = savedIndices[i];
-
-            if (IsValidSlot(savedSelectedSlot) && IsSlotOccupied(savedSelectedSlot))
-                selectedSlot = savedSelectedSlot;
-            else
-                SelectFirstOccupiedSlot();
         }
         else if (legacyLastItemIndex >= 0 && itemDatabase != null &&
                  legacyLastItemIndex < itemDatabase.Count)
         {
             itemIndices[0] = legacyLastItemIndex;
-            selectedSlot = 0;
         }
+
+        RemoveDuplicateItemTypes();
+
+        if (IsValidSlot(savedSelectedSlot) && IsSlotOccupied(savedSelectedSlot))
+            selectedSlot = savedSelectedSlot;
+        else
+            SelectFirstOccupiedSlot();
 
         NotifyInventoryChanged();
     }
@@ -330,6 +358,35 @@ public class InventoryManager : MonoBehaviour
             return candidate.Tier < current.Tier;
 
         return candidate.SellPrice < current.SellPrice;
+    }
+
+    private bool ContainsItemIndex(int itemIndex)
+    {
+        EnsureInitialized();
+        if (itemIndex < 0) return false;
+
+        for (int i = 0; i < itemIndices.Length; i++)
+        {
+            if (itemIndices[i] == itemIndex)
+                return true;
+        }
+
+        return false;
+    }
+
+    private void RemoveDuplicateItemTypes()
+    {
+        EnsureInitialized();
+        HashSet<int> seen = new HashSet<int>();
+
+        for (int i = 0; i < itemIndices.Length; i++)
+        {
+            int index = itemIndices[i];
+            if (index < 0) continue;
+
+            if (!seen.Add(index))
+                itemIndices[i] = -1;
+        }
     }
 
     private void NotifyInventoryChanged()

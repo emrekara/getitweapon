@@ -119,6 +119,9 @@ public class InventoryPanelUI : MonoBehaviour
             anvilManager.OnAnvilLevelChanged -= RefreshAll;
             anvilManager.OnAnvilLevelChanged += RefreshAll;
         }
+
+        LocalizationManager.OnLanguageChanged -= RefreshAll;
+        LocalizationManager.OnLanguageChanged += RefreshAll;
     }
 
     private void UnsubscribeEvents()
@@ -130,6 +133,8 @@ public class InventoryPanelUI : MonoBehaviour
 
         if (anvilManager != null)
             anvilManager.OnAnvilLevelChanged -= RefreshAll;
+
+        LocalizationManager.OnLanguageChanged -= RefreshAll;
     }
 
     private void HandleSlotSelected(int slotIndex)
